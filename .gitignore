@@ -1,0 +1,6 @@
+# Reference clone of the UI/UX Pro Max skill (used locally for design lookups,
+# not tracked here — it has its own .git/).
+ui_ux_skill/
+
+# Claude Code local-machine settings
+.claude/

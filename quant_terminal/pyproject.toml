@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant_terminal"
+version = "0.1.0"
+description = "Institutional-grade quant terminal: portfolio analytics, short-squeeze scanner, Kalman elastic trading"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Aymeric Faureav" }]
+license = { text = "Proprietary" }
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.4",
+    "plotly>=5.20",
+    "streamlit>=1.32",
+    "streamlit-lightweight-charts>=0.7.21",
+    "lightweight-charts>=2.0",
+    "yfinance>=0.2.40",
+    "alpaca-py>=0.21",
+    "fredapi>=0.5",
+    "pyyaml>=6.0",
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "openpyxl>=3.1",
+    "pyarrow>=15.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+quant-terminal = "src.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"

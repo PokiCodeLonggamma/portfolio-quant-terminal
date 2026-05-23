@@ -1,0 +1,42 @@
+# ============================================================================
+# Quant Terminal -- runtime config (non-secret)
+# Secrets live in .env (loaded via python-dotenv in src/utils/config.py)
+# ============================================================================
+
+paths:
+  data_dir: ./data
+  raw_dir: ./data/raw
+  processed_dir: ./data/processed
+  cache_dir: ./data/cache
+  logs_dir: ./logs
+
+# Risk-engine parameters
+risk:
+  var_confidence: 0.95
+  var_horizon_days: 1
+  monte_carlo_paths: 5000
+  rf_annual: 0.03                # risk-free rate proxy (EUR)
+  trading_days: 252
+
+# Factor benchmarks (yfinance-compatible tickers; loader will try Alpaca first)
+factors:
+  equity_us: SPY
+  nasdaq:    QQQ
+  uranium:   URA
+  energy:    XLE
+  gold:      GLD
+  silver:    SLV
+  bonds:     TLT
+  commodities: DBC
+  vix:       "^VIX"
+  dxy:       "DX-Y.NYB"
+
+# Default look-back window (years) for historical data
+history_years: 3
+
+# Streamlit theme is in src/viz/theme.py (dark Financial Dashboard palette)
+
+# Charting
+charts:
+  default_engine: lightweight-charts   # plotly | lightweight-charts
+  height: 480

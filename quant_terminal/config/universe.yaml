@@ -1,0 +1,136 @@
+# ============================================================================
+# Tickers known to live in the portfolio + their canonical metadata.
+# - alpaca: symbol passed to Alpaca (US listings). Empty => skip Alpaca.
+# - yfinance: symbol used as fallback (works for TSX, EU ETPs, ETCs).
+# - currency: trading currency of the listing (used for FX normalization).
+# - theme: bucket used in the dashboard.
+# - region: geographic bucket.
+# ============================================================================
+
+instruments:
+  ASTS:
+    alpaca: ASTS
+    yfinance: ASTS
+    currency: USD
+    region: US
+    theme: Space
+    asset_class: equity
+  ALB:
+    alpaca: ALB
+    yfinance: ALB
+    currency: USD
+    region: US
+    theme: Commodities_Lithium
+    asset_class: equity
+  AII.TO:
+    alpaca: ""
+    yfinance: AII.TO
+    currency: CAD
+    region: Canada
+    theme: Strategic_Metals
+    asset_class: equity
+  GOOG:
+    alpaca: GOOG
+    yfinance: GOOG
+    currency: USD
+    region: US
+    theme: AI_Mega_Cap
+    asset_class: equity
+  AAOI:
+    alpaca: AAOI
+    yfinance: AAOI
+    currency: USD
+    region: US
+    theme: AI_Optics
+    asset_class: equity
+  BWXT:
+    alpaca: BWXT
+    yfinance: BWXT
+    currency: USD
+    region: US
+    theme: Nuclear_Defense
+    asset_class: equity
+  CCJ:
+    alpaca: CCJ
+    yfinance: CCJ
+    currency: USD
+    region: US
+    theme: Uranium
+    asset_class: equity
+  ENGI.PA:
+    alpaca: ""
+    yfinance: ENGI.PA
+    currency: EUR
+    region: Europe
+    theme: Utilities
+    asset_class: equity
+  PNG.V:
+    alpaca: ""
+    yfinance: PNG.V
+    currency: CAD
+    region: Canada
+    theme: Marine_Robotics
+    asset_class: equity
+  NTR:
+    alpaca: NTR
+    yfinance: NTR
+    currency: USD
+    region: US
+    theme: Agri_Commodities
+    asset_class: equity
+  ONDS:
+    alpaca: ONDS
+    yfinance: ONDS
+    currency: USD
+    region: US
+    theme: Industrial_Wireless
+    asset_class: equity
+  QS:
+    alpaca: QS
+    yfinance: QS
+    currency: USD
+    region: US
+    theme: SolidState_Batteries
+    asset_class: equity
+  RDW:
+    alpaca: RDW
+    yfinance: RDW
+    currency: USD
+    region: US
+    theme: Space
+    asset_class: equity
+  SU.PA:
+    alpaca: ""
+    yfinance: SU.PA
+    currency: EUR
+    region: Europe
+    theme: Electrification
+    asset_class: equity
+  PHAG.L:
+    alpaca: ""
+    yfinance: PHAG.L
+    currency: GBp
+    region: Europe
+    theme: Silver
+    asset_class: etc
+  IGLN.L:
+    alpaca: ""
+    yfinance: IGLN.L
+    currency: GBp
+    region: Europe
+    theme: Gold
+    asset_class: etc
+  3DES.L:
+    alpaca: ""
+    yfinance: 3DES.L
+    currency: USD
+    region: Europe
+    theme: Hedge_DAX_Short_3x
+    asset_class: etp_leveraged
+  3OIL.L:
+    alpaca: ""
+    yfinance: 3OIL.L
+    currency: USD
+    region: Europe
+    theme: Energy_WTI_3x
+    asset_class: etp_leveraged

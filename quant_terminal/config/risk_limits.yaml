@@ -1,0 +1,20 @@
+# ============================================================================
+# Hard risk guard-rails. Surfaced in the dashboard as red/green checks.
+# ============================================================================
+
+portfolio:
+  target_vol_annual: 0.25         # 25%
+  max_var_95_daily_pct: 0.03      # 3% of EV
+  max_drawdown_pct: 0.20          # -20% triggers de-risking
+  max_gross_leverage: 1.20
+
+position:
+  max_single_position_pct: 0.12   # 12% of EV
+  max_speculative_satellite_pct: 0.30
+
+leveraged_etps:
+  max_individual_pct: 0.05        # 5% of EV per 3x ETP
+  max_aggregate_pct: 0.08
+
+themes:
+  max_per_theme_pct: 0.35
