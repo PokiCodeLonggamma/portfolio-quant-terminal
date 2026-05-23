@@ -93,6 +93,18 @@ with st.sidebar:
 
 
 # ----------------------------------------------------------------------------
+# Page header (visible above the tabs so they're never clipped)
+# ----------------------------------------------------------------------------
+st.markdown(
+    f"<div style='display:flex;align-items:baseline;gap:16px;margin-bottom:8px'>"
+    f"<h2 style='margin:0;color:{PALETTE.fg};font-weight:600'>Quant Terminal</h2>"
+    f"<span style='color:{PALETTE.fg_muted};font-size:0.85rem'>"
+    f"Portfolio · Short Squeeze · Kalman</span></div>",
+    unsafe_allow_html=True,
+)
+
+
+# ----------------------------------------------------------------------------
 # Tabs
 # ----------------------------------------------------------------------------
 tab_portfolio, tab_squeeze, tab_kalman = st.tabs([

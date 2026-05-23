@@ -22,19 +22,21 @@ from src.viz.theme import PALETTE, color_pct, fmt_eur, fmt_pct
 def render_kpi_strip(portfolio: Portfolio, metrics: dict | None = None,
                      latest_pnl_eur: float | None = None) -> None:
     """Top metric row."""
-    cols = st.columns(5)
+    cash = float(getattr(portfolio, "cash_eur", 0.0) or 0.0)
+    net_value = portfolio.total_value_eur + cash
+    cols = st.columns(6)
     with cols[0]:
-        st.metric("Total value", fmt_eur(portfolio.total_value_eur))
+        st.metric("Net value", fmt_eur(net_value))
     with cols[1]:
-        n = len(portfolio.holdings)
-        st.metric("Positions", f"{n}")
+        st.metric("Gross long", fmt_eur(portfolio.total_value_eur))
     with cols[2]:
-        pnl = latest_pnl_eur if latest_pnl_eur is not None else 0.0
-        st.metric("PnL (period)", fmt_eur(pnl, decimals=0))
+        st.metric("Cash / margin", fmt_eur(cash))
     with cols[3]:
+        st.metric("Positions", f"{len(portfolio.holdings)}")
+    with cols[4]:
         sharpe = (metrics or {}).get("sharpe", float("nan"))
         st.metric("Sharpe", f"{sharpe:.2f}" if pd.notna(sharpe) else "n/a")
-    with cols[4]:
+    with cols[5]:
         dd = (metrics or {}).get("max_drawdown", float("nan"))
         st.metric("Max drawdown", fmt_pct(dd) if pd.notna(dd) else "n/a")
 

@@ -87,8 +87,20 @@ def inject_streamlit_css() -> str:
         background-color: {p.bg};
         color: {p.fg};
       }}
+      /* Streamlit's default header overlaps tabs/titles — flatten it. */
+      header[data-testid="stHeader"] {{
+        background: transparent;
+        height: 0;
+      }}
+      header[data-testid="stHeader"]::before {{
+        display: none;
+      }}
+      div[data-testid="stToolbar"] {{
+        z-index: 999;
+        background: transparent;
+      }}
       .block-container {{
-        padding-top: 1.2rem;
+        padding-top: 4.5rem;
         padding-bottom: 4rem;
         max-width: 1400px;
       }}
@@ -117,15 +129,26 @@ def inject_streamlit_css() -> str:
       /* Tabs */
       div[data-baseweb="tab-list"] {{
         gap: 4px;
+        background: transparent;
+        border-bottom: 1px solid {p.border};
+        margin-bottom: 1rem;
       }}
       button[data-baseweb="tab"] {{
         background: {p.card};
         border-radius: 8px 8px 0 0;
         color: {p.fg_muted};
         border-bottom: 2px solid transparent;
+        padding: 10px 18px;
+        font-weight: 500;
+        font-size: 0.95rem;
+      }}
+      button[data-baseweb="tab"]:hover {{
+        color: {p.fg};
+        background: {p.muted_bg};
       }}
       button[data-baseweb="tab"][aria-selected="true"] {{
         color: {p.fg};
+        background: {p.muted_bg};
         border-bottom: 2px solid {p.accent};
       }}
       /* DataFrames */

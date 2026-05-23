@@ -38,23 +38,43 @@ class Portfolio:
     @staticmethod
     def _enrich(df: pd.DataFrame) -> pd.DataFrame:
         cfg = get_config()
-        # Build a lookup from common symbol forms to universe key
         keys = list(cfg.instruments.keys())
-        lookup: dict[str, str] = {}
+
+        # Exact-match lookup: ticker, alpaca symbol, yfinance symbol, ISIN.
+        exact: dict[str, str] = {}
+        # Substring-match lookup: name_hints -> universe_key
+        hint_pairs: list[tuple[str, str]] = []
         for k in keys:
             meta = cfg.instruments[k]
-            for alias in {k, meta.get("alpaca", ""), meta.get("yfinance", "")}:
+            for alias in {k, meta.get("alpaca", ""), meta.get("yfinance", ""), meta.get("isin", "")}:
                 if alias:
-                    lookup[alias.upper()] = k
+                    exact[str(alias).upper()] = k
+            for hint in meta.get("name_hints", []) or []:
+                if hint:
+                    hint_pairs.append((str(hint).lower(), k))
 
-        def resolve(sym: str) -> str:
-            return lookup.get(str(sym).upper(), str(sym))
+        def resolve(row: pd.Series) -> str:
+            sym = str(row.get("symbol", "")).upper()
+            if sym in exact:
+                return exact[sym]
+            name = str(row.get("name", "")).lower()
+            for hint, k in hint_pairs:
+                if hint in name:
+                    return k
+            # Last resort: keep the raw symbol so the user sees what wasn't mapped.
+            return sym or name.upper() or "UNKNOWN"
 
-        df["universe_key"] = df["symbol"].map(resolve)
+        df["universe_key"] = df.apply(resolve, axis=1)
         df["theme"] = df["universe_key"].map(lambda k: cfg.theme_of(k))
         df["region"] = df["universe_key"].map(lambda k: cfg.region_of(k))
-        if "currency" not in df.columns or df["currency"].isna().any():
+        if "currency" not in df.columns:
             df["currency"] = df["universe_key"].map(lambda k: cfg.currency_of(k))
+        else:
+            # If the parser left blanks, fill them from the universe.
+            df["currency"] = df["currency"].where(
+                df["currency"].astype(str).str.strip().ne(""),
+                df["universe_key"].map(lambda k: cfg.currency_of(k)),
+            )
         df["asset_class"] = df["universe_key"].map(
             lambda k: cfg.instruments.get(k, {}).get("asset_class", "equity")
         )
@@ -99,8 +119,15 @@ class Portfolio:
 
 
 def from_degiro(positions_df: pd.DataFrame) -> Portfolio:
-    """Build a Portfolio directly from a Degiro-parsed DataFrame."""
+    """Build a Portfolio directly from a Degiro-parsed DataFrame.
+
+    Propagates the cash_eur sidecar (set by `parse_degiro`) onto the Portfolio
+    instance so the UI can surface a margin / cash balance separately.
+    """
     needed = positions_df.copy()
     if "name" not in needed.columns:
         needed["name"] = needed["symbol"]
-    return Portfolio(holdings=needed)
+    cash_eur = float(positions_df.attrs.get("cash_eur", 0.0))
+    pf = Portfolio(holdings=needed)
+    pf.cash_eur = cash_eur  # type: ignore[attr-defined]
+    return pf

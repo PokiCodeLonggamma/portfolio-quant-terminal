@@ -3,6 +3,9 @@
 # - alpaca: symbol passed to Alpaca (US listings). Empty => skip Alpaca.
 # - yfinance: symbol used as fallback (works for TSX, EU ETPs, ETCs).
 # - currency: trading currency of the listing (used for FX normalization).
+# - isin: 12-char ISIN as it appears in DEGIRO exports (Ticker/ISIN column).
+# - name_hints: list of lowercase substrings used to fuzzy-match the
+#   DEGIRO "Produit" column when ISIN doesn't match.
 # - theme: bucket used in the dashboard.
 # - region: geographic bucket.
 # ============================================================================
@@ -11,6 +14,8 @@ instruments:
   ASTS:
     alpaca: ASTS
     yfinance: ASTS
+    isin: US00217D1000
+    name_hints: ["ast spacemobile"]
     currency: USD
     region: US
     theme: Space
@@ -18,6 +23,8 @@ instruments:
   ALB:
     alpaca: ALB
     yfinance: ALB
+    isin: US0126531013
+    name_hints: ["albemarle"]
     currency: USD
     region: US
     theme: Commodities_Lithium
@@ -25,6 +32,8 @@ instruments:
   AII.TO:
     alpaca: ""
     yfinance: AII.TO
+    isin: CA0203987072
+    name_hints: ["almonty"]
     currency: CAD
     region: Canada
     theme: Strategic_Metals
@@ -32,6 +41,8 @@ instruments:
   GOOG:
     alpaca: GOOG
     yfinance: GOOG
+    isin: US02079K1079
+    name_hints: ["alphabet"]
     currency: USD
     region: US
     theme: AI_Mega_Cap
@@ -39,13 +50,26 @@ instruments:
   AAOI:
     alpaca: AAOI
     yfinance: AAOI
+    isin: US03823U1025
+    name_hints: ["applied optoelectronics"]
     currency: USD
     region: US
     theme: AI_Optics
     asset_class: equity
+  BKSY:
+    alpaca: BKSY
+    yfinance: BKSY
+    isin: US09263B2079
+    name_hints: ["blacksky"]
+    currency: USD
+    region: US
+    theme: Space
+    asset_class: equity
   BWXT:
     alpaca: BWXT
     yfinance: BWXT
+    isin: US05605H1005
+    name_hints: ["bwx technologies", "bwxt"]
     currency: USD
     region: US
     theme: Nuclear_Defense
@@ -53,6 +77,8 @@ instruments:
   CCJ:
     alpaca: CCJ
     yfinance: CCJ
+    isin: CA13321L1085
+    name_hints: ["cameco"]
     currency: USD
     region: US
     theme: Uranium
@@ -60,13 +86,26 @@ instruments:
   ENGI.PA:
     alpaca: ""
     yfinance: ENGI.PA
+    isin: FR0010208488
+    name_hints: ["engie"]
     currency: EUR
     region: Europe
     theme: Utilities
     asset_class: equity
+  IONQ:
+    alpaca: IONQ
+    yfinance: IONQ
+    isin: US46222L1089
+    name_hints: ["ionq"]
+    currency: USD
+    region: US
+    theme: Quantum_Computing
+    asset_class: equity
   PNG.V:
     alpaca: ""
     yfinance: PNG.V
+    isin: CA50077N1024
+    name_hints: ["kraken robotics"]
     currency: CAD
     region: Canada
     theme: Marine_Robotics
@@ -74,6 +113,8 @@ instruments:
   NTR:
     alpaca: NTR
     yfinance: NTR
+    isin: CA67077M1086
+    name_hints: ["nutrien"]
     currency: USD
     region: US
     theme: Agri_Commodities
@@ -81,6 +122,8 @@ instruments:
   ONDS:
     alpaca: ONDS
     yfinance: ONDS
+    isin: ""
+    name_hints: ["ondas"]
     currency: USD
     region: US
     theme: Industrial_Wireless
@@ -88,6 +131,8 @@ instruments:
   QS:
     alpaca: QS
     yfinance: QS
+    isin: ""
+    name_hints: ["quantumscape"]
     currency: USD
     region: US
     theme: SolidState_Batteries
@@ -95,6 +140,17 @@ instruments:
   RDW:
     alpaca: RDW
     yfinance: RDW
+    isin: US75776W1036
+    name_hints: ["redwire"]
+    currency: USD
+    region: US
+    theme: Space
+    asset_class: equity
+  RKLB:
+    alpaca: RKLB
+    yfinance: RKLB
+    isin: US7731211089
+    name_hints: ["rocket lab"]
     currency: USD
     region: US
     theme: Space
@@ -102,6 +158,8 @@ instruments:
   SU.PA:
     alpaca: ""
     yfinance: SU.PA
+    isin: FR0000121972
+    name_hints: ["schneider electric"]
     currency: EUR
     region: Europe
     theme: Electrification
@@ -109,6 +167,8 @@ instruments:
   PHAG.L:
     alpaca: ""
     yfinance: PHAG.L
+    isin: JE00B1VS3333
+    name_hints: ["wisdomtree physical silver", "physical silver"]
     currency: GBp
     region: Europe
     theme: Silver
@@ -116,6 +176,8 @@ instruments:
   IGLN.L:
     alpaca: ""
     yfinance: IGLN.L
+    isin: IE00B4ND3602
+    name_hints: ["physical gold", "ishares physical gold"]
     currency: GBp
     region: Europe
     theme: Gold
@@ -123,6 +185,8 @@ instruments:
   3DES.L:
     alpaca: ""
     yfinance: 3DES.L
+    isin: IE00B8GKPP93
+    name_hints: ["dax 3x daily short", "wisdomtree dax 3x"]
     currency: USD
     region: Europe
     theme: Hedge_DAX_Short_3x
@@ -130,6 +194,8 @@ instruments:
   3OIL.L:
     alpaca: ""
     yfinance: 3OIL.L
+    isin: XS2819844387
+    name_hints: ["wti crude oil 3x", "wisdomtree wti crude oil 3x"]
     currency: USD
     region: Europe
     theme: Energy_WTI_3x
