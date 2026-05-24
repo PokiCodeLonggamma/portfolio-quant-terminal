@@ -1,0 +1,56 @@
+# =============================================================================
+# DoD top-line program allocations (USD billions, FY).
+# Sourced from public PB-26 / Congressional Budget Justification documents.
+# Update manually after PBS revisions.
+# =============================================================================
+
+programs:
+  - name: Sentinel ICBM (ground-based strategic deterrent)
+    tickers: [BWXT, NOC, LMT]
+    fy_usd_billion: 4.1
+    source_note: "PB-26 GBSD line item, Air Force"
+
+  - name: Columbia-class SSBN
+    tickers: [BWXT, HII, GD]
+    fy_usd_billion: 9.6
+    source_note: "PB-26 SCN Columbia procurement"
+
+  - name: AUKUS Pillar I (Virginia-class transfer)
+    tickers: [BWXT, HII]
+    fy_usd_billion: 4.2
+    source_note: "FY-26 SCN supplementary"
+
+  - name: NGI (Next Generation Interceptor / Golden Dome)
+    tickers: [RDW, RKLB, LMT, NOC]
+    fy_usd_billion: 2.8
+    source_note: "MDA NGI development + Golden Dome architecture"
+
+  - name: Space Development Agency Tranche 2/3
+    tickers: [RDW, RKLB, BKSY, MNTS]
+    fy_usd_billion: 3.5
+    source_note: "SDA Tranche 2 transport + tracking layers"
+
+  - name: Hypersonic Strike (LRHW + CPS + ARRW)
+    tickers: [LMT, NOC, RTX]
+    fy_usd_billion: 4.7
+    source_note: "Cross-service hypersonic portfolio"
+
+  - name: Counter-UAS / Loitering munitions
+    tickers: [AVAV, KTOS]
+    fy_usd_billion: 1.9
+    source_note: "DoD CUAS + Replicator initiative"
+
+  - name: Nuclear modernization (warhead refurbishment)
+    tickers: [BWXT]
+    fy_usd_billion: 2.2
+    source_note: "NNSA stockpile sustainment"
+
+  - name: Quantum & cryptography (NIST PQC + DARPA)
+    tickers: [IONQ, IBM, GOOG]
+    fy_usd_billion: 1.4
+    source_note: "DARPA US2QC + NIST PQC standardisation"
+
+  - name: AI infra (JADC2 + datacenter buildout)
+    tickers: [AAOI, ANET, MRVL, NVDA]
+    fy_usd_billion: 5.6
+    source_note: "JWCC contract umbrella + JADC2 networking"

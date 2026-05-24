@@ -1,0 +1,69 @@
+# Hedge-fund registry — quant + discretionary funds we follow on 13F-HR.
+#
+# CIKs sourced from SEC EDGAR full-text search (https://efts.sec.gov/LATEST/search-index)
+# using each fund's legal entity name. Buckets are editorial: Quant, Macro,
+# Activist, Value, Growth, Multi-Strat.
+#
+# Add / remove freely; consumers re-read this file on next render.
+
+funds:
+  - cik: "0001037389"   # Renaissance Technologies LLC
+    name: "Renaissance Technologies"
+    bucket: "Quant"
+  - cik: "0001423053"   # Citadel Advisors LLC
+    name: "Citadel Advisors"
+    bucket: "Multi-Strat"
+  - cik: "0001179392"   # Two Sigma Investments LP
+    name: "Two Sigma Investments"
+    bucket: "Quant"
+  - cik: "0001056903"   # AQR Capital Management
+    name: "AQR Capital Management"
+    bucket: "Quant"
+  - cik: "0001009207"   # D. E. Shaw & Co. LP
+    name: "D. E. Shaw"
+    bucket: "Quant"
+  - cik: "0001273087"   # Millennium Management LLC
+    name: "Millennium Management"
+    bucket: "Multi-Strat"
+  - cik: "0001350694"   # Bridgewater Associates LP
+    name: "Bridgewater Associates"
+    bucket: "Macro"
+  - cik: "0001167483"   # Tiger Global Management LLC
+    name: "Tiger Global Management"
+    bucket: "Growth"
+  - cik: "0001541617"   # Coatue Management LLC
+    name: "Coatue Management"
+    bucket: "Growth"
+  - cik: "0001061165"   # Lone Pine Capital LLC
+    name: "Lone Pine Capital"
+    bucket: "Growth"
+  - cik: "0001000275"   # Maverick Capital
+    name: "Maverick Capital"
+    bucket: "Growth"
+  - cik: "0001336528"   # Pershing Square Capital Management
+    name: "Pershing Square Capital"
+    bucket: "Activist"
+  - cik: "0001418814"   # ValueAct Capital
+    name: "ValueAct Capital"
+    bucket: "Activist"
+  - cik: "0001040273"   # Third Point LLC
+    name: "Third Point"
+    bucket: "Activist"
+  - cik: "0001327567"   # Greenlight Capital Inc
+    name: "Greenlight Capital"
+    bucket: "Value"
+  - cik: "0001029160"   # Soros Fund Management LLC
+    name: "Soros Fund Management"
+    bucket: "Macro"
+  - cik: "0001006438"   # Appaloosa LP
+    name: "Appaloosa LP"
+    bucket: "Macro"
+  - cik: "0001061768"   # The Baupost Group LLC
+    name: "Baupost Group"
+    bucket: "Value"
+  - cik: "0001628110"   # Marshall Wace North America LP
+    name: "Marshall Wace"
+    bucket: "Quant"
+  - cik: "0001603466"   # Point72 Asset Management LP
+    name: "Point72 Asset Management"
+    bucket: "Multi-Strat"

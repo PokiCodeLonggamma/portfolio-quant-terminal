@@ -143,3 +143,116 @@ class FilingEvent(BaseModel):
     period_of_report: date | None = None
     url: str
     payload: dict = Field(default_factory=dict)  # form-specific parsed body
+
+
+# ---------------------------------------------------------------------------
+# SEC-derived analytics (Cluster 1)
+# ---------------------------------------------------------------------------
+class InsiderTransaction(BaseModel):
+    """One row parsed from a Form 4 nonDerivativeTransaction element."""
+
+    cik: str
+    reporter_name: str
+    reporter_role: str                   # "officer", "director", "10%owner"
+    ticker: str | None
+    transaction_date: date
+    code: str                            # P, S, A, M, F, D, G ...
+    shares: float
+    price: float                         # USD per share (0 for grants)
+    value_usd: float
+    post_holding_shares: float
+    accession: str
+
+
+class Holding13F(BaseModel):
+    """One row of an institutional 13F-HR information-table."""
+
+    cik_fund: str
+    fund_name: str
+    cusip: str
+    ticker: str | None
+    name_of_issuer: str
+    shares: int
+    value_usd_000: int                   # SEC reports value in $thousands
+    period_of_report: date
+
+
+class DilutionAssessment(BaseModel):
+    """Output of `assess_dilution(ticker)` — see dilution.py."""
+
+    ticker: str
+    atm_active: bool
+    atm_remaining_usd: float | None = None
+    convertibles_outstanding_usd: float | None = None
+    shares_outstanding: float = 0.0
+    dilution_score: int                  # 1 (low) -> 5 (severe)
+    rationale: list[str] = Field(default_factory=list)
+
+
+class RunwayAssessment(BaseModel):
+    """Output of `assess_runway(ticker)` — see cash_runway.py."""
+
+    ticker: str
+    cash_eur: float
+    quarterly_burn_eur: float            # signed positive = cash being consumed
+    runway_quarters: float               # cash / quarterly_burn; inf if burn<=0
+    period_end: date
+    confidence: Literal["high", "medium", "low"] = "medium"
+
+
+class ContractAward(BaseModel):
+    """One government contract award (e.g. SAM.gov)."""
+
+    awarded_to: str
+    ticker: str | None
+    award_id: str
+    amount_usd: float
+    awarded_on: date
+    description: str
+    agency: str
+
+
+# ---------------------------------------------------------------------------
+# Macro / régime (Cluster 2)
+# ---------------------------------------------------------------------------
+class RegimeSnapshot(BaseModel):
+    """One row of the regime lattice — 2x2x2 (inflation x growth x policy)."""
+
+    asof: date
+    inflation: Literal["high", "low"]
+    growth: Literal["high", "low"]
+    policy: Literal["tight", "loose"]
+    label: str                           # e.g. "Stagflation", "Goldilocks"
+    confidence: float = 1.0              # [0,1]; 0 if FRED unavailable
+    metrics: dict[str, float] = Field(default_factory=dict)
+    # CPI_yoy, PMI_proxy, DFF_chg_6m, T10Y2Y, T10Y3M, VIX, DXY
+
+
+class PairCandidate(BaseModel):
+    """Cointegration + momentum-gap screener row."""
+
+    long_ticker: str
+    short_ticker: str
+    coint_pvalue: float
+    halflife_days: float | None = None
+    spread_z: float | None = None
+    momentum_gap: float | None = None    # 12M-1M of long minus short
+    rationale: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Liquidity (Cluster 2)
+# ---------------------------------------------------------------------------
+class LiquidityRow(BaseModel):
+    """Per-holding liquidity / impact snapshot."""
+
+    ticker: str
+    adv_usd: float                       # 20D rolling $-volume
+    adv_eur: float
+    weight_eur: float                    # portfolio weight (EUR)
+    days_to_liq_10pct: float             # at 10% participation
+    days_to_liq_20pct: float             # at 20% participation
+    slippage_bps_1pct_trade: float       # cost (bps) of trading 1% of book
+    short_interest_pct: float | None = None
+    days_to_cover: float | None = None
+    borrow_estimate: str = "n/a"         # "n/a" | "available" | "hard_to_borrow"

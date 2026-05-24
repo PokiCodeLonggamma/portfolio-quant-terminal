@@ -1,0 +1,521 @@
+# ============================================================================
+# Watchlists — Quantum / Photonics / Defense
+# Source of truth: docs/PHASE1_PLAN.md section 5 (copied verbatim) PLUS the
+# minimum ticker coverage mandated by the Cluster 6 brief.
+# Each entry carries the universe-metadata mini-block (yfinance, alpaca,
+# currency, region, theme, asset_class[, isin, name_hints]) so the loader
+# can build a Portfolio stub without editing config/universe.yaml.
+# ============================================================================
+
+quantum:
+  # ---- Pure-play hardware ------------------------------------------------
+  IONQ:
+    sub_theme: Trapped_Ion
+    conviction: core
+    catalyst: "AQ64 system deployment + DARPA QBI milestones 2026"
+    peers: ["RGTI", "QBTS", "QUBT"]
+    yfinance: IONQ
+    alpaca: IONQ
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  RGTI:
+    sub_theme: Superconducting
+    conviction: high
+    catalyst: "Ankaa-3 + 84-qubit benchmark mid-2026; DARPA QBI Stage B selection"
+    peers: ["IONQ", "QBTS"]
+    yfinance: RGTI
+    alpaca: RGTI
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  QBTS:
+    sub_theme: Annealing
+    conviction: speculative
+    catalyst: "Advantage2 commercial traction; AQC-2026 product announcements"
+    peers: ["IONQ", "RGTI"]
+    yfinance: QBTS
+    alpaca: QBTS
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  QUBT:
+    sub_theme: Photonics_Quantum
+    conviction: speculative
+    catalyst: "TFLN foundry ramp; QAaaS revenue inflection"
+    peers: ["IONQ", "IBM", "GOOG"]
+    yfinance: QUBT
+    alpaca: QUBT
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  ARQQ:
+    sub_theme: Post_Quantum_Crypto
+    conviction: medium
+    catalyst: "NIST PQC standard rollouts; defense contracts 2026"
+    peers: ["IONQ"]
+    yfinance: ARQQ
+    alpaca: ARQQ
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  # ---- Big tech / quantum-adjacent --------------------------------------
+  IBM:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: medium
+    catalyst: "Quantum System Two; Heron r2 + Condor follow-up"
+    peers: ["GOOG", "MSFT"]
+    yfinance: IBM
+    alpaca: IBM
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  GOOG:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: medium
+    catalyst: "Willow processor + Quantum AI roadmap; logical qubit milestones"
+    peers: ["IBM", "MSFT"]
+    yfinance: GOOG
+    alpaca: GOOG
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  MSFT:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: medium
+    catalyst: "Majorana 1 topological qubit progress; Azure Quantum partnerships"
+    peers: ["IBM", "GOOG"]
+    yfinance: MSFT
+    alpaca: MSFT
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  INTC:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: medium
+    catalyst: "Tunnel Falls silicon spin-qubit research; foundry partnerships"
+    peers: ["IBM", "NVDA"]
+    yfinance: INTC
+    alpaca: INTC
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  NVDA:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: high
+    catalyst: "CUDA-Q hybrid HPC-quantum stack; DGX Quantum integration"
+    peers: ["IBM", "GOOG"]
+    yfinance: NVDA
+    alpaca: NVDA
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  HON:
+    sub_theme: Big_Tech_Quantum_Adjacent
+    conviction: medium
+    catalyst: "Quantinuum IPO timing (currently private — see pre_ipo list)"
+    peers: ["IBM"]
+    yfinance: HON
+    alpaca: HON
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  # ---- Picks & shovels --------------------------------------------------
+  OXIG.L:
+    sub_theme: Picks_And_Shovels
+    conviction: medium
+    catalyst: "Cryogenic + dilution fridge demand from quantum & superconductor labs"
+    peers: ["FORM", "AEHR"]
+    yfinance: OXIG.L
+    alpaca: ""
+    currency: GBp
+    region: UK
+    theme: Quantum
+    asset_class: equity
+  FORM:
+    sub_theme: Picks_And_Shovels
+    conviction: medium
+    catalyst: "Cryogenic probe systems for quantum/advanced packaging"
+    peers: ["OXIG.L", "AEHR"]
+    yfinance: FORM
+    alpaca: FORM
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  AEHR:
+    sub_theme: Picks_And_Shovels
+    conviction: speculative
+    catalyst: "Wafer-level burn-in tools for SiC + photonics + quantum chips"
+    peers: ["FORM", "OXIG.L"]
+    yfinance: AEHR
+    alpaca: AEHR
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: equity
+  # ---- Thematic ETF -----------------------------------------------------
+  QTUM:
+    sub_theme: ETF
+    conviction: core
+    catalyst: "thematic flow proxy; rebalances quarterly"
+    peers: []
+    yfinance: QTUM
+    alpaca: QTUM
+    currency: USD
+    region: US
+    theme: Quantum
+    asset_class: etf
+
+photonics:
+  # ---- AI optics datacenter --------------------------------------------
+  AAOI:
+    sub_theme: Datacenter_Optics
+    conviction: core
+    catalyst: "Hyperscaler 1.6T transceiver ramps; Microsoft design wins"
+    peers: ["COHR", "LITE", "FN"]
+    yfinance: AAOI
+    alpaca: AAOI
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  LITE:
+    sub_theme: Datacenter_Optics
+    conviction: high
+    catalyst: "Indium phosphide capacity build; cloud capex tailwind"
+    peers: ["AAOI", "COHR", "FN"]
+    yfinance: LITE
+    alpaca: LITE
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  COHR:
+    sub_theme: Datacenter_Optics
+    conviction: high
+    catalyst: "EML laser shortage premium; AI optics share gains; industrial laser portfolio"
+    peers: ["AAOI", "LITE", "FN", "IPGP"]
+    yfinance: COHR
+    alpaca: COHR
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  FN:
+    sub_theme: Datacenter_Optics
+    conviction: medium
+    catalyst: "Nvidia partner; CPO transition"
+    peers: ["AAOI", "COHR", "LITE"]
+    yfinance: FN
+    alpaca: FN
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  IPGP:
+    sub_theme: Industrial_Lasers
+    conviction: medium
+    catalyst: "Cyclical recovery; defense laser demand"
+    peers: ["COHR", "LASR", "VECO"]
+    yfinance: IPGP
+    alpaca: IPGP
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  MTSI:
+    sub_theme: AI_Optics_Datacenter
+    conviction: high
+    catalyst: "High-speed analog + optical drivers for AI clusters; silicon photonics exposure"
+    peers: ["MRVL", "ANET", "LITE"]
+    yfinance: MTSI
+    alpaca: MTSI
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  MRVL:
+    sub_theme: Optical_DSP
+    conviction: high
+    catalyst: "Custom AI silicon ramp; PAM4 DSP share; silicon photonics roadmap"
+    peers: ["AVGO", "NVDA", "MTSI"]
+    yfinance: MRVL
+    alpaca: MRVL
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  # ---- Industrial lasers ------------------------------------------------
+  LASR:
+    sub_theme: Industrial_Lasers
+    conviction: speculative
+    catalyst: "Semiconductor capex recovery; directed-energy defense pull"
+    peers: ["IPGP", "COHR", "VECO"]
+    yfinance: LASR
+    alpaca: LASR
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  VECO:
+    sub_theme: Industrial_Lasers
+    conviction: medium
+    catalyst: "Laser annealing for advanced nodes; MOCVD for photonics"
+    peers: ["IPGP", "LASR"]
+    yfinance: VECO
+    alpaca: VECO
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  # ---- LiDAR -----------------------------------------------------------
+  LAZR:
+    sub_theme: LiDAR
+    conviction: speculative
+    catalyst: "OEM design wins; ADAS rollouts 2026-27"
+    peers: ["OUST", "AEVA", "INVZ", "MVIS"]
+    yfinance: LAZR
+    alpaca: LAZR
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  OUST:
+    sub_theme: LiDAR
+    conviction: speculative
+    catalyst: "Digital LiDAR adoption in industrial automation + robotics"
+    peers: ["LAZR", "AEVA", "INVZ", "MVIS"]
+    yfinance: OUST
+    alpaca: OUST
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  AEVA:
+    sub_theme: LiDAR
+    conviction: speculative
+    catalyst: "FMCW 4D LiDAR uptake; auto + industrial design wins"
+    peers: ["LAZR", "OUST", "INVZ", "MVIS"]
+    yfinance: AEVA
+    alpaca: AEVA
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  INVZ:
+    sub_theme: LiDAR
+    conviction: speculative
+    catalyst: "BMW production ramp; series program awards"
+    peers: ["LAZR", "OUST", "AEVA", "MVIS"]
+    yfinance: INVZ
+    alpaca: INVZ
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  MVIS:
+    sub_theme: LiDAR
+    conviction: speculative
+    catalyst: "MAVIN sensor commercialisation; OEM nominations"
+    peers: ["LAZR", "OUST", "AEVA", "INVZ"]
+    yfinance: MVIS
+    alpaca: MVIS
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  # ---- Silicon photonics / networking ----------------------------------
+  ANET:
+    sub_theme: Silicon_Photonics
+    conviction: medium
+    catalyst: "800G + 1.6T deployment cadence; co-packaged optics roadmap"
+    peers: ["CSCO", "NVDA", "MRVL", "MTSI"]
+    yfinance: ANET
+    alpaca: ANET
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  NVMI:
+    sub_theme: Metrology_Photonics
+    conviction: medium
+    catalyst: "Advanced packaging metrology pull-through"
+    peers: ["KLAC"]
+    yfinance: NVMI
+    alpaca: NVMI
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+  POET:
+    sub_theme: Silicon_Photonics
+    conviction: speculative
+    catalyst: "Optical interposer commercial sampling; CPO partnerships"
+    peers: ["AAOI", "LITE"]
+    yfinance: POET
+    alpaca: POET
+    currency: USD
+    region: US
+    theme: Photonics
+    asset_class: equity
+
+defense:
+  # ---- Nuclear / SMR ---------------------------------------------------
+  BWXT:
+    sub_theme: Nuclear_SMR
+    conviction: high
+    catalyst: "Naval reactor backlog; microreactor / SMR contracts"
+    peers: ["CCJ", "NNE"]
+    yfinance: BWXT
+    alpaca: BWXT
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  CCJ:
+    sub_theme: Nuclear_SMR
+    conviction: high
+    catalyst: "Uranium spot pricing + utility long-term contracts; Westinghouse fees"
+    peers: ["BWXT", "NNE"]
+    yfinance: CCJ
+    alpaca: CCJ
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  NNE:
+    sub_theme: Nuclear_SMR
+    conviction: speculative
+    catalyst: "Microreactor pilots; DoD installation contracts"
+    peers: ["BWXT", "CCJ"]
+    yfinance: NNE
+    alpaca: NNE
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  # ---- Space-Defense ---------------------------------------------------
+  RDW:
+    sub_theme: Space_Defense
+    conviction: high
+    catalyst: "ESCAPADE delivery; space-station modules; defense ISR"
+    peers: ["RKLB", "BKSY"]
+    yfinance: RDW
+    alpaca: RDW
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  RKLB:
+    sub_theme: Space_Defense
+    conviction: core
+    catalyst: "Neutron maiden flight; Hypersonic Accelerator (HASTE) ramp"
+    peers: ["RDW", "BKSY"]
+    yfinance: RKLB
+    alpaca: RKLB
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  BKSY:
+    sub_theme: Space_Defense
+    conviction: speculative
+    catalyst: "Gen-3 satellite constellation; NRO + allied gov contracts"
+    peers: ["RDW", "RKLB"]
+    yfinance: BKSY
+    alpaca: BKSY
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  # ---- Hypersonic / missile / drones -----------------------------------
+  KTOS:
+    sub_theme: Drones_Hypersonic
+    conviction: high
+    catalyst: "Valkyrie + Athena CCA; DoD FY27 budget pull-through; hypersonic targets"
+    peers: ["AVAV", "PLTR", "LMT", "RTX"]
+    yfinance: KTOS
+    alpaca: KTOS
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  AVAV:
+    sub_theme: Drones_Hypersonic
+    conviction: high
+    catalyst: "Switchblade restocks; Ukraine + Pacific theatre"
+    peers: ["KTOS"]
+    yfinance: AVAV
+    alpaca: AVAV
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  LMT:
+    sub_theme: Prime_Defense
+    conviction: medium
+    catalyst: "F-35 sustainment + missile defense; hypersonic programs"
+    peers: ["RTX", "NOC"]
+    yfinance: LMT
+    alpaca: LMT
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  RTX:
+    sub_theme: Prime_Defense
+    conviction: medium
+    catalyst: "Missile + radar restocks; engine OE/AM cycle"
+    peers: ["LMT", "NOC"]
+    yfinance: RTX
+    alpaca: RTX
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  NOC:
+    sub_theme: Prime_Defense
+    conviction: medium
+    catalyst: "B-21 ramp; Sentinel ICBM; hypersonic glide bodies"
+    peers: ["LMT", "RTX"]
+    yfinance: NOC
+    alpaca: NOC
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  # ---- Adjacent --------------------------------------------------------
+  HEI:
+    sub_theme: Aerospace_Parts
+    conviction: medium
+    catalyst: "Aftermarket margin expansion"
+    peers: ["TDG"]
+    yfinance: HEI
+    alpaca: HEI
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
+  PLTR:
+    sub_theme: Defense_Software
+    conviction: speculative
+    catalyst: "DoD AIP expansion; allied governments adoption"
+    peers: ["MSFT"]
+    yfinance: PLTR
+    alpaca: PLTR
+    currency: USD
+    region: US
+    theme: Defense
+    asset_class: equity
