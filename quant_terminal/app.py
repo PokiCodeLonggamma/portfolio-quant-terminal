@@ -152,6 +152,17 @@ from src.portfolio.greeks_dashboards import (
 )
 from src.trading.journal import list_open as journal_list_open
 
+# Alerts (Feature 2)
+import os as _os
+from src.alerts.dashboards import (
+    render_alerts_history,
+    render_alerts_status,
+    render_dispatcher_status,
+    render_just_fired_toasts,
+    render_triggers_table,
+)
+from src.alerts.engine import EvaluationContext, evaluate_all, load_triggers
+
 
 # ============================================================================
 # Page boilerplate
@@ -290,6 +301,7 @@ tabs = st.tabs([
     "🧠 Decision Support",
     "📅 Catalysts & News",
     "📒 Backtest",
+    "🔔 Alerts",
     "🔥 Short Squeeze",
     "🤖 Kalman",
 ])
@@ -955,15 +967,68 @@ with tabs[7]:
 
 
 # ============================================================================
-# TAB 8 — SHORT SQUEEZE SCANNER (existing)
+# TAB 8 — ALERTS (Feature 2)
 # ============================================================================
 with tabs[8]:
+    st.title("🔔 Alerts")
+    st.caption(
+        "Triggers évalués à chaque refresh (Live mode) — Discord / Email / Telegram / Streamlit. "
+        "Édite `config/alerts.yaml` à chaud."
+    )
+
+    # Load triggers, build evaluation context from already-fetched data
+    triggers = load_triggers()
+    ctx = EvaluationContext(
+        prices_eur=prices_eur if not prices_eur.empty else None,
+        drawdown_series=dd if not dd.empty else None,
+    )
+
+    # Dispatcher status from env (no real API call here)
+    dispatchers_status = {
+        "discord":   bool(_os.getenv("DISCORD_WEBHOOK_URL", "")),
+        "email":     bool(_os.getenv("ALERT_SMTP_HOST", "") and _os.getenv("ALERT_SMTP_TO", "")),
+        "telegram":  bool(_os.getenv("TELEGRAM_BOT_TOKEN", "") and _os.getenv("TELEGRAM_CHAT_ID", "")),
+        "streamlit": True,
+    }
+
+    # Evaluate triggers — only dispatch when LIVE mode is on, to avoid alert
+    # spam during manual interactions. In idle mode we evaluate + show fired
+    # but do NOT push to external channels.
+    live_on = _refresh_ms > 0
+    try:
+        fired_now = evaluate_all(triggers, ctx, dispatch=live_on)
+    except Exception as exc:
+        st.error(f"Alerts engine error : {exc}")
+        fired_now = []
+
+    render_alerts_status(triggers, fired_now, dispatchers_status)
+    render_just_fired_toasts(fired_now)
+
+    st.divider()
+    st.subheader("Channels")
+    render_dispatcher_status(dispatchers_status)
+
+    alerts_sub = st.tabs(["Triggers configurés", "Historique des alertes"])
+    with alerts_sub[0]:
+        render_triggers_table(triggers)
+        st.caption(
+            "Pour ajouter / désactiver un trigger : édite `config/alerts.yaml`. "
+            "Les changements sont pris en compte au prochain refresh."
+        )
+    with alerts_sub[1]:
+        render_alerts_history(limit=100)
+
+
+# ============================================================================
+# TAB 9 — SHORT SQUEEZE SCANNER (existing)
+# ============================================================================
+with tabs[9]:
     st.title("🔥 Short Squeeze Scanner")
     st.caption("Combine SEC EDGAR (Form SHO threshold list) + Finviz screener → squeeze score.")
 
     col_a, col_b = st.columns(2)
     with col_a:
-        run_scan = st.button("▶ Lancer un scan", use_container_width=True, key="squeeze_btn")
+        run_scan = st.button("▶ Lancer un scan", use_container_width=True, key="squeeze_btn_v2")
     with col_b:
         st.metric("SEC_EMAIL", "configuré" if get_config().secrets.sec_email else "manquant")
 
@@ -981,9 +1046,9 @@ with tabs[8]:
 
 
 # ============================================================================
-# TAB 9 — KALMAN ELASTIC TRADING (existing)
+# TAB 10 — KALMAN ELASTIC TRADING (existing)
 # ============================================================================
-with tabs[9]:
+with tabs[10]:
     st.title("🤖 Kalman Elastic Trading")
     st.caption(f"Lecture des artefacts depuis : `{artefacts_dir()}`")
 
