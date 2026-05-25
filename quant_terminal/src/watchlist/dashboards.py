@@ -48,6 +48,13 @@ def _pct_html(value: float | None) -> str:
     return f"<span style='color:{colour};font-family:Fira Code,monospace;font-weight:600;'>{fmt_pct(float(value))}</span>"
 
 
+def _hex_to_rgba(hex_str: str, alpha: float = 0.13) -> str:
+    """Convert '#RRGGBB' to 'rgba(R,G,B,alpha)' — Plotly rejects '#RRGGBBAA'."""
+    h = hex_str.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha:.2f})"
+
+
 def _spark_figure(index: list[str], values: list[float]) -> go.Figure | None:
     if not values or not index or len(values) < 2:
         return None
@@ -60,7 +67,7 @@ def _spark_figure(index: list[str], values: list[float]) -> go.Figure | None:
             line={"color": colour, "width": 1.5},
             hoverinfo="skip",
             fill="tozeroy",
-            fillcolor=f"{colour}22",
+            fillcolor=_hex_to_rgba(colour, alpha=0.13),
         )
     )
     fig.update_layout(**PLOTLY_TEMPLATE["layout"])

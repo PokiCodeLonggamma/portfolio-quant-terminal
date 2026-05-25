@@ -54,14 +54,14 @@ def render_pre_event_wizard(
     if df.empty:
         st.info("Aucun candidat exploitable (pas de chain, pas de delta, ou univers vide).")
         return
-    # Round + display
+    # Round + display — coerce to numeric first to handle None/NaN cells (object dtype)
     show = df.copy()
     for c in ["iv_rank", "implied_move_pct", "historical_avg_move_pct", "score"]:
         if c in show.columns:
-            show[c] = show[c].round(2)
+            show[c] = pd.to_numeric(show[c], errors="coerce").round(2)
     for c in ["debit_usd", "debit_eur"]:
         if c in show.columns:
-            show[c] = show[c].round(0)
+            show[c] = pd.to_numeric(show[c], errors="coerce").round(0)
     st.dataframe(show.head(40), use_container_width=True, hide_index=True)
 
     # Highlight top-3

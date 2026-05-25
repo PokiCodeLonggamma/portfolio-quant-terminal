@@ -49,7 +49,12 @@ from src.viz.dashboards import (
     render_violations,
 )
 from src.viz.plots import lightweight_candles
-from src.viz.theme import PALETTE, inject_streamlit_css
+from src.viz.theme import (
+    PALETTE,
+    hero_header_html,
+    inject_streamlit_css,
+    status_pill_html,
+)
 
 # --- new wave-1 cluster imports ---------------------------------------------
 # Trading (cluster 5)
@@ -260,14 +265,13 @@ with st.sidebar:
             from streamlit_autorefresh import st_autorefresh
             st_autorefresh(interval=_refresh_ms, key="quant_live_tick")
             st.markdown(
-                f"<span style='color:{PALETTE.profit};font-weight:600'>● LIVE</span>"
-                f" · refresh every {refresh_choice}",
+                status_pill_html(f"LIVE · {refresh_choice}", "live"),
                 unsafe_allow_html=True,
             )
         except ImportError:
             st.warning("`streamlit-autorefresh` non installé — `pip install streamlit-autorefresh`.")
     else:
-        st.caption(f"● <span style='color:{PALETTE.fg_muted}'>idle</span>", unsafe_allow_html=True)
+        st.markdown(status_pill_html("idle", "idle"), unsafe_allow_html=True)
 
 
 # ============================================================================
@@ -314,13 +318,29 @@ metrics = risk_metrics(port_ret).as_dict() if not port_ret.empty else {}
 
 
 # ============================================================================
-# Page header
+# Page hero — title, subtitle, status pills (live/paper/data sources)
 # ============================================================================
+_pills: list[tuple[str, str]] = []
+if _refresh_ms > 0:
+    _pills.append((f"LIVE {refresh_choice}", "live"))
+else:
+    _pills.append(("IDLE", "idle"))
+_exec_mode_hero = resolve_mode()
+_pills.append(("PAPER" if _exec_mode_hero == "paper" else "LIVE TRADING",
+               "info" if _exec_mode_hero == "paper" else "loss"))
+_pills.append(("ALPACA" if cfg.secrets.has_alpaca else "YFINANCE ONLY",
+               "live" if cfg.secrets.has_alpaca else "warning"))
+if portfolio is not None:
+    _pills.append((f"{len(portfolio.holdings)} POS", "info"))
+
 st.markdown(
-    f"<div style='display:flex;align-items:baseline;gap:16px;margin-bottom:8px'>"
-    f"<h2 style='margin:0;color:{PALETTE.fg};font-weight:600'>Quant Terminal</h2>"
-    f"<span style='color:{PALETTE.fg_muted};font-size:0.85rem'>"
-    f"Portfolio · Trading · Watchlists · Macro · Smart-Money · Backtest · Squeeze · Kalman</span></div>",
+    hero_header_html(
+        title="Quant Terminal",
+        subtitle="Portfolio · Trading · Watchlists · Macro · Smart-Money · "
+                 "Decision · Catalysts · Events · Backtest · Alerts · "
+                 "Execution · Snapshot/Tax · Squeeze · Kalman",
+        pills=_pills,
+    ),
     unsafe_allow_html=True,
 )
 

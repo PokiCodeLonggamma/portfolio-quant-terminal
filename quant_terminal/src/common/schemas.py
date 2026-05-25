@@ -224,6 +224,7 @@ class RegimeSnapshot(BaseModel):
     policy: Literal["tight", "loose"]
     label: str                           # e.g. "Stagflation", "Goldilocks"
     confidence: float = 0.0              # 0.0 = no data; 1.0 = clean signal
+    metrics: dict[str, float] = Field(default_factory=dict)  # cpi_yoy, dff, t10y3m, …
 
 
 # ---------------------------------------------------------------------------

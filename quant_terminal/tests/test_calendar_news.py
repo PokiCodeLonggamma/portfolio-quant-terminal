@@ -321,8 +321,8 @@ def test_aggregate_news_returns_long_dataframe():
     assert isinstance(df, pd.DataFrame)
     assert not df.empty
     assert {"ticker", "day", "article_count", "mean_sentiment"} <= set(df.columns)
-    # ASTS today should have 2 articles
-    today = date.today()
-    today_row = df[(df["ticker"] == "ASTS") & (df["day"] == today)]
+    # ASTS "today" (UTC — matches the aggregator) should have 2 articles
+    today_utc = datetime.utcnow().date()
+    today_row = df[(df["ticker"] == "ASTS") & (df["day"] == today_utc)]
     assert not today_row.empty
     assert int(today_row["article_count"].iloc[0]) == 2
