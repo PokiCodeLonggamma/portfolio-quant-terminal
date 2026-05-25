@@ -285,6 +285,98 @@ class BrokerPosition(BaseModel):
     market_value_usd: float
     unrealized_pl_usd: float
     side: Literal["LONG", "SHORT"] = "LONG"
+
+
+# ---------------------------------------------------------------------------
+# Snapshots (Feature 5a)
+# ---------------------------------------------------------------------------
+class SnapshotMeta(BaseModel):
+    """Metadata of one daily portfolio snapshot."""
+
+    asof: date
+    net_value_eur: float
+    gross_long_eur: float
+    cash_eur: float
+    n_positions: int
+    n_open_options: int = 0
+    fx_rates: dict[str, float] = Field(default_factory=dict)  # ccy -> EUR/ccy
+    notes: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ---------------------------------------------------------------------------
+# Tax lots (Feature 5b)
+# ---------------------------------------------------------------------------
+class TaxLot(BaseModel):
+    """One acquisition lot. Cost basis stored in BOTH listing ccy + EUR."""
+
+    lot_id: str
+    ticker: str
+    qty: float                           # remaining qty (initial - consumed)
+    qty_initial: float                   # qty at acquisition
+    acquired_at: date
+    price_local: float                   # per-share price in listing ccy
+    currency: str = "USD"
+    fx_rate_eur: float = 1.0             # 1 EUR = fx_rate_eur units of `currency` at purchase
+    cost_eur: float = 0.0                # qty_initial × price_local / fx_rate_eur (or × for EUR)
+    account: str = "CTO"
+    notes: str = ""
+
+
+class RealisedTrade(BaseModel):
+    """One sale event matched against one or more lots (FIFO)."""
+
+    sale_id: str
+    ticker: str
+    sold_at: date
+    qty_sold: float
+    sale_price_local: float
+    sale_currency: str = "USD"
+    sale_fx_rate_eur: float = 1.0
+    sale_proceeds_eur: float = 0.0
+    consumed_lots: list[dict] = Field(default_factory=list)   # [{lot_id, qty, cost_eur}]
+    cost_basis_eur: float = 0.0
+    realised_pnl_eur: float = 0.0
+    holding_period_days: int = 0
+    account: str = "CTO"
+
+
+# ---------------------------------------------------------------------------
+# Event trading (Feature 6)
+# ---------------------------------------------------------------------------
+class EventSetup(BaseModel):
+    """One candidate trade setup ranked by the pre-event wizard."""
+
+    ticker: str
+    event_id: str | None = None          # link to CalendarEvent.event_id
+    event_category: str
+    direction: Literal["LONG_CALL", "LONG_PUT", "STRADDLE"] = "LONG_CALL"
+    iv_rank: float | None = None
+    implied_move_pct: float | None = None
+    historical_avg_move_pct: float | None = None
+    target_delta: float = 0.25
+    strike: float | None = None
+    expiry: date | None = None
+    debit_usd: float | None = None
+    debit_eur: float | None = None
+    score: float = 0.0                   # composite expected-value score
+    rationale: list[str] = Field(default_factory=list)
+
+
+class EarningsScenario(BaseModel):
+    """Output of the earnings simulator for one position under a shock."""
+
+    ticker: str
+    contract_symbol: str
+    spot_now: float
+    spot_after: float
+    iv_now: float
+    iv_after: float
+    price_now: float
+    price_after: float
+    pnl_per_contract_local: float
+    pnl_total_eur: float
+    notes: str = ""
     confidence: float = 1.0              # [0,1]; 0 if FRED unavailable
     metrics: dict[str, float] = Field(default_factory=dict)
     # CPI_yoy, PMI_proxy, DFF_chg_6m, T10Y2Y, T10Y3M, VIX, DXY

@@ -7,7 +7,7 @@ Phase 2   : 🎯 Conviction & Sizing · 📅 Catalysts & News (Wave 2 — coming
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 import streamlit as st
@@ -179,6 +179,28 @@ from src.execution.modes import resolve_mode
 from src.execution.positions import get_positions as broker_get_positions
 from src.execution.positions import reconcile as positions_reconcile
 
+# Snapshot (Feature 5a)
+from src.snapshot.capture import capture as snapshot_capture
+from src.snapshot.dashboards import render_snapshot_history, render_snapshot_replay
+from src.snapshot.store import list_dates as snapshot_list_dates
+from src.snapshot.store import save as snapshot_save
+
+# Tax (Feature 5b)
+from src.tax.dashboards import (
+    render_annual_summary,
+    render_csv_import,
+    render_lot_manual_form,
+    render_lots_table,
+    render_realised_table,
+    render_sale_manual_form,
+)
+
+# Event trading (Feature 6)
+from src.event_trading.dashboards import (
+    render_earnings_simulator,
+    render_pre_event_wizard,
+)
+
 
 # ============================================================================
 # Page boilerplate
@@ -316,9 +338,11 @@ tabs = st.tabs([
     "💸 Smart-Money & Fundamentals",
     "🧠 Decision Support",
     "📅 Catalysts & News",
+    "🎬 Event Trading",
     "📒 Backtest",
     "🔔 Alerts",
     "📡 Execution",
+    "📊 Snapshot & Tax",
     "🔥 Short Squeeze",
     "🤖 Kalman",
 ])
@@ -938,9 +962,68 @@ with tabs[6]:
 
 
 # ============================================================================
-# TAB 7 — BACKTEST (Cluster 7)
+# TAB 7 — EVENT TRADING (Feature 6: wizard + earnings simulator)
 # ============================================================================
 with tabs[7]:
+    st.title("🎬 Event Trading")
+    st.caption(
+        "Pre-event setup wizard (Δ-25 candidates per catalyst) + earnings reaction "
+        "simulator (spot/IV shock grid)."
+    )
+
+    et_sub = st.tabs(["Pre-event wizard", "Earnings simulator"])
+
+    trading_universe = [
+        "ASTS", "RDW", "BKSY", "IONQ", "RKLB", "AAOI", "QS", "ONDS",
+        "CCJ", "BWXT", "ALB", "NTR", "GOOG",
+    ]
+    # Build a lightweight chain fetcher with the cache the Trading tab uses
+    @st.cache_data(show_spinner=False, ttl=300)
+    def _wizard_chain(t: str):
+        try:
+            return fetch_chain(t)
+        except Exception:
+            return []
+
+    spot_lookup = {}
+    if not prices_eur.empty:
+        for col in prices_eur.columns:
+            s = prices_eur[col].dropna()
+            if not s.empty:
+                spot_lookup[col] = float(s.iloc[-1])
+
+    # Macro+earnings events from Cluster 4 (already loaded for the catalyst board)
+    try:
+        all_events = list(_macro_events()) + list(_earnings(tuple(universe_for_cal))) + list(_launches())
+    except Exception:
+        all_events = []
+    upcoming = [e for e in all_events
+                if e.start.date() >= datetime.utcnow().date()
+                and (e.start.date() - datetime.utcnow().date()).days <= 21]
+
+    with et_sub[0]:
+        render_pre_event_wizard(
+            upcoming, trading_universe,
+            spot_lookup=spot_lookup,
+            fetch_chain_fn=_wizard_chain,
+        )
+
+    with et_sub[1]:
+        try:
+            open_options = journal_list_open()
+        except Exception:
+            open_options = pd.DataFrame()
+        render_earnings_simulator(
+            open_options_df=open_options,
+            fetch_chain_fn=_wizard_chain,
+            spot_lookup=spot_lookup,
+        )
+
+
+# ============================================================================
+# TAB 8 — BACKTEST (Cluster 7)
+# ============================================================================
+with tabs[8]:
     st.title("📒 Backtest")
     st.caption("Simule l'application de règles (max single, max DD, stop-loss, momentum entry…) sur le portefeuille.")
 
@@ -984,9 +1067,9 @@ with tabs[7]:
 
 
 # ============================================================================
-# TAB 8 — ALERTS (Feature 2)
+# TAB 9 — ALERTS (Feature 2)
 # ============================================================================
-with tabs[8]:
+with tabs[9]:
     st.title("🔔 Alerts")
     st.caption(
         "Triggers évalués à chaque refresh (Live mode) — Discord / Email / Telegram / Streamlit. "
@@ -1037,9 +1120,9 @@ with tabs[8]:
 
 
 # ============================================================================
-# TAB 9 — EXECUTION (Feature 1)
+# TAB 10 — EXECUTION (Feature 1)
 # ============================================================================
-with tabs[9]:
+with tabs[10]:
     st.title("📡 Execution")
     st.caption(
         "OMS connecté à Alpaca. Paper-mode par défaut, gates pré-trade obligatoires, "
@@ -1140,9 +1223,64 @@ with tabs[9]:
 
 
 # ============================================================================
-# TAB 10 — SHORT SQUEEZE SCANNER (existing)
+# TAB 11 — SNAPSHOT & TAX (Feature 5)
 # ============================================================================
-with tabs[10]:
+with tabs[11]:
+    st.title("📊 Snapshot & Tax")
+    st.caption(
+        "Snapshots quotidiens du portefeuille + tax lots FIFO (cost basis EUR, "
+        "réalisation per-vente, 2074-CMV ready)."
+    )
+
+    snaptax_sub = st.tabs(["Snapshot history", "Replay a snapshot", "Tax lots", "Realised PnL", "Import / Manual"])
+
+    with snaptax_sub[0]:
+        # Auto-capture once per day when LIVE mode is on
+        if _refresh_ms > 0 and portfolio is not None:
+            today_iso = date.today()
+            if today_iso not in snapshot_list_dates():
+                try:
+                    bundle = snapshot_capture(portfolio, prices_eur)
+                    path = snapshot_save(bundle)
+                    st.success(f"Snapshot du jour capturé → {path.name}")
+                except Exception as exc:
+                    st.warning(f"Auto-capture échoué : {exc}")
+        elif portfolio is not None:
+            if st.button("📸 Capture snapshot maintenant",
+                          key="snap_manual_btn"):
+                try:
+                    bundle = snapshot_capture(portfolio, prices_eur)
+                    path = snapshot_save(bundle)
+                    st.success(f"Snapshot capturé → {path.name}")
+                except Exception as exc:
+                    st.warning(f"Capture échouée : {exc}")
+        render_snapshot_history()
+
+    with snaptax_sub[1]:
+        render_snapshot_replay()
+
+    with snaptax_sub[2]:
+        st.subheader("Lots ouverts (FIFO)")
+        render_lots_table()
+
+    with snaptax_sub[3]:
+        st.subheader("PnL réalisé par année")
+        render_annual_summary()
+        st.subheader("Historique des ventes")
+        render_realised_table()
+
+    with snaptax_sub[4]:
+        render_csv_import()
+        st.divider()
+        render_lot_manual_form()
+        st.divider()
+        render_sale_manual_form()
+
+
+# ============================================================================
+# TAB 12 — SHORT SQUEEZE SCANNER (existing)
+# ============================================================================
+with tabs[12]:
     st.title("🔥 Short Squeeze Scanner")
     st.caption("Combine SEC EDGAR (Form SHO threshold list) + Finviz screener → squeeze score.")
 
@@ -1166,9 +1304,9 @@ with tabs[10]:
 
 
 # ============================================================================
-# TAB 11 — KALMAN ELASTIC TRADING (existing)
+# TAB 13 — KALMAN ELASTIC TRADING (existing)
 # ============================================================================
-with tabs[11]:
+with tabs[13]:
     st.title("🤖 Kalman Elastic Trading")
     st.caption(f"Lecture des artefacts depuis : `{artefacts_dir()}`")
 
