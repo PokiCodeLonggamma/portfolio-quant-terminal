@@ -210,7 +210,6 @@ def aggregate_greeks(
             except Exception as exc:
                 log.warning("Greeks: chain fetch failed for %s: %s", ticker, exc)
                 continue
-            spot_local = None
             # If we don't have an EUR spot, leave delta in option units; else convert
             spot_eur = _spot_eur(ticker, prices_eur)
             currency = cfg.currency_of(ticker) or "USD"

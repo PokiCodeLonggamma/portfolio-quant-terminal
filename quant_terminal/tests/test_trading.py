@@ -13,7 +13,6 @@ from __future__ import annotations
 import math
 from datetime import date, datetime, timedelta
 
-import pandas as pd
 import pytest
 
 from src.common.schemas import OptionContract, OptionRight, TradeTicket

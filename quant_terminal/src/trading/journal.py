@@ -63,10 +63,21 @@ _COLUMNS = [
 
 def _row_to_dict(row: JournalTradeRow) -> dict:
     d = row.model_dump()
-    d["opened_ts"] = pd.Timestamp(row.opened_ts)
-    d["closed_ts"] = pd.Timestamp(row.closed_ts) if row.closed_ts else pd.NaT
+    # Parquet `datetime64[ms]` (the pyarrow default) tops out at millisecond
+    # precision. Coerce the microseconds in datetime.utcnow() outputs to ms so
+    # the engine doesn't raise on strict (Linux / newer pyarrow) backends.
+    d["opened_ts"] = pd.Timestamp(row.opened_ts).floor("ms")
+    d["closed_ts"] = pd.Timestamp(row.closed_ts).floor("ms") if row.closed_ts else pd.NaT
     d["expiry"] = pd.Timestamp(row.expiry)
     return d
+
+
+def _save_df(df: pd.DataFrame) -> None:
+    # Belt-and-braces: floor any datetime column to ms before writing parquet.
+    for col in ("opened_ts", "closed_ts"):
+        if col in df.columns and pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].dt.floor("ms")
+    df.to_parquet(_journal_path(), index=False)
 
 
 def _df_from_rows(rows: list[JournalTradeRow]) -> pd.DataFrame:
@@ -84,10 +95,6 @@ def _load_df() -> pd.DataFrame:
     except Exception as exc:
         log.error("Failed to read journal %s: %s", path, exc)
         return pd.DataFrame(columns=_COLUMNS)
-
-
-def _save_df(df: pd.DataFrame) -> None:
-    df.to_parquet(_journal_path(), index=False)
 
 
 # ---------------------------------------------------------------------------

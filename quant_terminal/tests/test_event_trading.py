@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-import pandas as pd
 import pytest
 
 from src.common.schemas import CalendarEvent, OptionContract, OptionRight

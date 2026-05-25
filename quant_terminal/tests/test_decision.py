@@ -261,7 +261,7 @@ def test_journal_list_summary(tmp_path, monkeypatch):
     abc = df[df["ticker"] == "ABC"].iloc[0]
     assert abc["n_milestones"] == 1
     assert abc["n_milestones_hit"] == 1
-    assert abc["has_pre_mortem"] is True or abc["has_pre_mortem"] == True  # numpy/python bool
+    assert bool(abc["has_pre_mortem"])  # accept both numpy bool and python bool
 
 
 def test_journal_read_missing_returns_none(tmp_path, monkeypatch):

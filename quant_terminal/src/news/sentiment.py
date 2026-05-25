@@ -128,7 +128,6 @@ def score_headline(text: str) -> float:
         return 0.0
     score = 0.0
     hits = 0
-    n = len(tokens)
     for i, tok in enumerate(tokens):
         weight: float | None = None
         sign = 0

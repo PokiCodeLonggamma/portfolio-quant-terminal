@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pandas as pd
 
 from src.portfolio.analytics import (
     cumulative_pnl,
@@ -36,7 +35,8 @@ def test_returns_pipeline(holdings_df, price_panel):
     # Align price panel columns to portfolio universe keys
     panel = price_panel.copy()
     panel.columns = pf.universe_keys[: len(panel.columns)]
-    r = returns(panel)
+    # Sanity: per-asset returns are well-formed
+    assert not returns(panel).empty
     port_ret = portfolio_returns(pf, panel)
     assert not port_ret.empty
     pnl = cumulative_pnl(port_ret, initial_value_eur=pf.total_value_eur)

@@ -1,7 +1,6 @@
 """Tests for the execution / OMS layer (Feature 1)."""
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from unittest.mock import MagicMock
 

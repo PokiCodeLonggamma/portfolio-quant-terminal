@@ -9,7 +9,6 @@ import pytest
 
 from src.common.schemas import OptionContract, OptionRight
 from src.portfolio.greeks import (
-    OPTION_MULTIPLIER,
     aggregate_greeks,
     gamma_calendar,
     theta_decay_schedule,
