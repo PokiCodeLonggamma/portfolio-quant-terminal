@@ -1,0 +1,32 @@
+# ============================================================================
+# Space launch manifest — 2026 (best-effort manual snapshot).
+#
+# Values reflect publicly-announced manifests as of compile date.  Dates are
+# **targets** and slip frequently; the calendar UI labels them "NET" (no
+# earlier than).  Update by hand when manifests slip.  No live API.
+#
+# Sources:
+#   spacex.com/launches, nextspaceflight.com, rocketlabusa.com/launches,
+#   roscosmos.ru, isro.gov.in.
+# ============================================================================
+
+spacex:
+  - {date: 2026-01-12, vehicle: "Falcon 9", mission: "Starlink Group 12-7", customer: "SpaceX"}
+  - {date: 2026-01-22, vehicle: "Falcon 9", mission: "USSF-87 GPS-III SV08", customer: "US Space Force"}
+  - {date: 2026-02-05, vehicle: "Starship", mission: "Starship IFT-12 — payload deployment demo", customer: "SpaceX"}
+  - {date: 2026-02-18, vehicle: "Falcon 9", mission: "Crew-12 to ISS", customer: "NASA"}
+  - {date: 2026-03-04, vehicle: "Falcon Heavy", mission: "Europa Clipper follow-on / GOES-U", customer: "NOAA"}
+  - {date: 2026-03-20, vehicle: "Falcon 9", mission: "Transporter-15 rideshare", customer: "SpaceX (multi-customer)"}
+  - {date: 2026-04-10, vehicle: "Falcon 9", mission: "SES-26 GEO comsat", customer: "SES"}
+  - {date: 2026-04-29, vehicle: "Starship", mission: "Starship IFT-13 — first orbital refuelling test", customer: "NASA HLS demo"}
+  - {date: 2026-05-15, vehicle: "Falcon 9", mission: "AST SpaceMobile BlueBird Block-2 #1", customer: "AST SpaceMobile (ASTS)"}
+  - {date: 2026-06-04, vehicle: "Falcon 9", mission: "AST SpaceMobile BlueBird Block-2 #2", customer: "AST SpaceMobile (ASTS)"}
+  - {date: 2026-07-09, vehicle: "Falcon 9", mission: "Starlink Group 13-1", customer: "SpaceX"}
+  - {date: 2026-09-12, vehicle: "Starship", mission: "Starship IFT-14 — Starlink V3 deployment", customer: "SpaceX"}
+
+rocketlab:
+  - {date: 2026-02-12, vehicle: "Electron", mission: "BlackSky Gen-3 #5", customer: "BlackSky (BKSY)"}
+  - {date: 2026-04-05, vehicle: "Electron", mission: "iQPS SAR-9", customer: "iQPS"}
+  - {date: 2026-06-25, vehicle: "Neutron", mission: "Neutron maiden flight from Wallops", customer: "Rocket Lab (RKLB)"}
+  - {date: 2026-08-14, vehicle: "Electron", mission: "BlackSky Gen-3 #6", customer: "BlackSky (BKSY)"}
+  - {date: 2026-10-22, vehicle: "Neutron", mission: "Neutron Flight 2 — commercial demo", customer: "Rocket Lab (RKLB)"}

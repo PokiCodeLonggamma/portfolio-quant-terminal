@@ -256,3 +256,83 @@ class LiquidityRow(BaseModel):
     short_interest_pct: float | None = None
     days_to_cover: float | None = None
     borrow_estimate: str = "n/a"         # "n/a" | "available" | "hard_to_borrow"
+
+
+# ---------------------------------------------------------------------------
+# Decision support (Cluster 3)
+# ---------------------------------------------------------------------------
+class ConvictionScore(BaseModel):
+    """Composite conviction score for a single position.
+
+    Each axis is rated 1 (poor) to 5 (excellent). The composite is a
+    weighted mean (see `config/conviction_weights.yaml` defaults).
+    """
+
+    ticker: str
+    thesis_quality: int                  # 1..5 — from user's journal pre-mortem & re-rating triggers
+    downside: int                        # 1..5 — inverse of dilution + runway risk
+    liquidity: int                       # 1..5 — derived from days_to_liq + slippage_bps
+    catalyst_proximity: int              # 1..5 — inverse of days-to-next-catalyst
+    composite: float                     # weighted mean, [1, 5]
+    grade: Literal["A", "B", "C", "D"]
+    rationale: list[str] = Field(default_factory=list)
+
+
+class JournalMilestone(BaseModel):
+    """One date-stamped milestone in a thesis journal."""
+
+    date: str                            # ISO date or quarter label (e.g. "2026-Q3")
+    label: str
+    hit: bool = False
+    weight: float = 1.0                  # contribution to milestones_hit_pct
+
+
+class JournalEntry(BaseModel):
+    """Per-ticker thesis YAML — one file per holding under data/journal/."""
+
+    ticker: str
+    thesis: str = ""
+    entry_rationale: str = ""
+    entry_price_eur: float | None = None
+    entry_date: date | None = None
+    position_target_pct: float | None = None
+    price_target_eur: float | None = None
+    stop_loss_thesis_eur: float | None = None       # "thèse cassée" stop
+    stop_loss_technical_eur: float | None = None
+    milestones: list[JournalMilestone] = Field(default_factory=list)
+    pre_mortem: str = ""
+    re_rating_triggers: list[str] = Field(default_factory=list)
+    catalyst_event_ids: list[str] = Field(default_factory=list)
+    last_updated: date | None = None
+    schema_version: int = 1
+
+
+class ReratingScore(BaseModel):
+    """Output of compute_rerating_score — how much of the thesis is "in"."""
+
+    ticker: str
+    score: float                                    # [0, 100]
+    price_progress_pct: float | None = None         # spot / target, capped at 100
+    milestones_hit_pct: float                       # weighted fraction of milestones hit
+    days_since_entry: int | None = None
+    recommendation: Literal["hold", "trim", "add", "exit", "review"]
+    rationale: list[str] = Field(default_factory=list)
+
+
+class CollarQuote(BaseModel):
+    """A 90-DTE protective collar quote for one position."""
+
+    ticker: str
+    underlying_px_eur: float
+    expiry: date
+    long_put_strike: float
+    short_call_strike: float
+    put_debit_eur: float                            # cost paid for the put leg
+    call_credit_eur: float                          # premium received for the call leg
+    net_premium_eur: float                          # put_debit - call_credit (positive = cost)
+    cost_pct_notional: float
+    breakeven_low: float                            # spot at expiry below which losses kick in
+    breakeven_high: float                           # spot at expiry above which gains are capped
+    max_loss_eur: float                             # signed negative
+    max_gain_eur: float                             # signed positive
+    notes: str = ""

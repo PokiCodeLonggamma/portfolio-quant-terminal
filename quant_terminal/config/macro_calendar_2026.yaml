@@ -1,0 +1,124 @@
+# ============================================================================
+# Macro catalyst calendar — 2026.
+#
+# All dates given in ISO format (YYYY-MM-DD).  When an event has a specific
+# release time (CPI 08:30 ET, EIA 10:30 ET, FOMC statement 14:00 ET), the
+# YAML simply gives the date — the calendar module fills a default UTC time
+# per category (08:30 ET = 13:30 UTC for CPI, 10:30 ET = 15:30 UTC for EIA,
+# 14:00 ET = 19:00 UTC for FOMC press).
+#
+# Sources
+#   FOMC 2026 schedule  — federalreserve.gov/monetarypolicy/fomccalendars.htm
+#   ECB GC 2026 dates   — ecb.europa.eu/press/calendars/mgcgc/html
+#   CPI release dates   — bls.gov/schedule/news_release/cpi.htm  (mid-month)
+#   EIA weekly status   — eia.gov  (Wednesdays 10:30 ET)
+#   OPEC+ JMMC          — opec.org press archive (public schedule)
+#   NRC SMR docket      — nrc.gov/reactors/new-reactors/smr.html
+# ============================================================================
+
+fomc:
+  - {date: 2026-01-28, title: "FOMC statement + press conference (Jan 2026)"}
+  - {date: 2026-03-18, title: "FOMC statement + SEP + press conference (Mar 2026)"}
+  - {date: 2026-04-29, title: "FOMC statement + press conference (Apr 2026)"}
+  - {date: 2026-06-17, title: "FOMC statement + SEP + press conference (Jun 2026)"}
+  - {date: 2026-07-29, title: "FOMC statement + press conference (Jul 2026)"}
+  - {date: 2026-09-16, title: "FOMC statement + SEP + press conference (Sep 2026)"}
+  - {date: 2026-11-04, title: "FOMC statement + press conference (Nov 2026)"}
+  - {date: 2026-12-16, title: "FOMC statement + SEP + press conference (Dec 2026)"}
+
+ecb:
+  - {date: 2026-01-22, title: "ECB Governing Council monetary policy meeting"}
+  - {date: 2026-03-12, title: "ECB Governing Council monetary policy meeting + projections"}
+  - {date: 2026-04-16, title: "ECB Governing Council monetary policy meeting"}
+  - {date: 2026-06-04, title: "ECB Governing Council monetary policy meeting + projections"}
+  - {date: 2026-07-23, title: "ECB Governing Council monetary policy meeting"}
+  - {date: 2026-09-10, title: "ECB Governing Council monetary policy meeting + projections"}
+  - {date: 2026-10-29, title: "ECB Governing Council monetary policy meeting"}
+  - {date: 2026-12-17, title: "ECB Governing Council monetary policy meeting + projections"}
+
+cpi:
+  - {date: 2026-01-14, title: "US CPI release (Dec 2025 print)"}
+  - {date: 2026-02-11, title: "US CPI release (Jan 2026 print)"}
+  - {date: 2026-03-11, title: "US CPI release (Feb 2026 print)"}
+  - {date: 2026-04-14, title: "US CPI release (Mar 2026 print)"}
+  - {date: 2026-05-13, title: "US CPI release (Apr 2026 print)"}
+  - {date: 2026-06-11, title: "US CPI release (May 2026 print)"}
+  - {date: 2026-07-15, title: "US CPI release (Jun 2026 print)"}
+  - {date: 2026-08-12, title: "US CPI release (Jul 2026 print)"}
+  - {date: 2026-09-10, title: "US CPI release (Aug 2026 print)"}
+  - {date: 2026-10-14, title: "US CPI release (Sep 2026 print)"}
+  - {date: 2026-11-12, title: "US CPI release (Oct 2026 print)"}
+  - {date: 2026-12-10, title: "US CPI release (Nov 2026 print)"}
+
+opec:
+  - {date: 2026-02-01, title: "OPEC+ JMMC monthly review (virtual)"}
+  - {date: 2026-04-08, title: "OPEC+ JMMC monthly review (virtual)"}
+  - {date: 2026-06-01, title: "OPEC+ ministerial meeting (Vienna)"}
+  - {date: 2026-09-09, title: "OPEC+ JMMC monthly review (virtual)"}
+  - {date: 2026-11-30, title: "OPEC+ ministerial meeting (Vienna)"}
+
+eia:
+  # EIA Weekly Petroleum Status Report — every Wednesday at 10:30 ET.
+  # First 52 Wednesdays of 2026.
+  - {date: 2026-01-07, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-01-14, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-01-21, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-01-28, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-02-04, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-02-11, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-02-18, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-02-25, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-03-04, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-03-11, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-03-18, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-03-25, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-04-01, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-04-08, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-04-15, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-04-22, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-04-29, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-05-06, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-05-13, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-05-20, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-05-27, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-06-03, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-06-10, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-06-17, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-06-24, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-07-01, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-07-08, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-07-15, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-07-22, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-07-29, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-08-05, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-08-12, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-08-19, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-08-26, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-09-02, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-09-09, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-09-16, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-09-23, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-09-30, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-10-07, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-10-14, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-10-21, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-10-28, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-11-04, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-11-12, title: "EIA Weekly Petroleum Status Report"}  # Wed slips to Thu after Veterans Day holiday week
+  - {date: 2026-11-18, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-11-25, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-12-02, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-12-09, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-12-16, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-12-23, title: "EIA Weekly Petroleum Status Report"}
+  - {date: 2026-12-30, title: "EIA Weekly Petroleum Status Report"}
+
+nrc:
+  # NRC Small Modular Reactor application + design certification milestones.
+  # Public docket items relevant to portfolio holdings (CCJ, BWXT, NRG, etc.)
+  - {date: 2026-02-15, ticker: "OKLO", title: "Oklo Aurora Combined Licence (COL) supplemental safety eval"}
+  - {date: 2026-03-31, ticker: "BWXT", title: "BWXT Advanced Reactor Topical Report response"}
+  - {date: 2026-05-15, ticker: "SMR",  title: "NuScale VOYGR-6 design cert amendment public meeting"}
+  - {date: 2026-06-30, ticker: "OKLO", title: "Oklo Aurora COL decision (target)"}
+  - {date: 2026-09-30, ticker: "NRG",  title: "NRG-led TVA Clinch River SMR-2 Phase II"}
+  - {date: 2026-11-30, ticker: "CCJ",  title: "Westinghouse AP300 design certification milestone (CCJ JV)"}
