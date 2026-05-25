@@ -1,0 +1,19 @@
+# =============================================================================
+# Execution / OMS limits — pre-trade guard-rails.
+# =============================================================================
+
+limits:
+  # Maximum number of orders that may be SUBMITTED in a single calendar day.
+  max_daily_orders: 20
+
+  # Aggregate cap on total notional submitted today (USD).
+  max_daily_notional_usd: 5000.0
+
+  # Cap on any SINGLE order's notional (USD).
+  max_single_order_notional_usd: 2000.0
+
+  # Order notional / portfolio value — refuse if > this share.
+  max_pct_of_portfolio_per_trade: 0.05
+
+  # Anything above this contract qty is treated as a fat-finger and refused.
+  fat_finger_qty_threshold: 1000

@@ -163,6 +163,22 @@ from src.alerts.dashboards import (
 )
 from src.alerts.engine import EvaluationContext, evaluate_all, load_triggers
 
+# Execution / OMS (Feature 1)
+from src.common.schemas import OrderRequest
+from src.execution import oms as exec_oms
+from src.execution.alpaca_broker import AlpacaBroker
+from src.execution.dashboards import (
+    render_account_summary,
+    render_audit_log,
+    render_mode_banner,
+    render_open_orders_table,
+    render_reconciliation,
+    render_submit_form,
+)
+from src.execution.modes import resolve_mode
+from src.execution.positions import get_positions as broker_get_positions
+from src.execution.positions import reconcile as positions_reconcile
+
 
 # ============================================================================
 # Page boilerplate
@@ -302,6 +318,7 @@ tabs = st.tabs([
     "📅 Catalysts & News",
     "📒 Backtest",
     "🔔 Alerts",
+    "📡 Execution",
     "🔥 Short Squeeze",
     "🤖 Kalman",
 ])
@@ -1020,9 +1037,112 @@ with tabs[8]:
 
 
 # ============================================================================
-# TAB 9 — SHORT SQUEEZE SCANNER (existing)
+# TAB 9 — EXECUTION (Feature 1)
 # ============================================================================
 with tabs[9]:
+    st.title("📡 Execution")
+    st.caption(
+        "OMS connecté à Alpaca. Paper-mode par défaut, gates pré-trade obligatoires, "
+        "audit log persistant."
+    )
+
+    exec_mode = resolve_mode()
+    render_mode_banner(exec_mode)
+
+    # Lazy broker — only built if Alpaca keys are present.
+    broker: AlpacaBroker | None = None
+    account = None
+    if cfg.secrets.has_alpaca:
+        try:
+            broker = AlpacaBroker(mode=exec_mode)
+            account = broker.get_account()
+        except Exception as exc:
+            st.error(f"Connexion Alpaca échouée : {exc}")
+            broker = None
+
+    st.subheader("Account")
+    render_account_summary(account)
+
+    exec_sub = st.tabs(["Submit order", "Open orders", "Positions (reconciliation)",
+                         "Audit log"])
+
+    with exec_sub[0]:
+        default_ticker = portfolio.universe_keys[0] if (
+            portfolio is not None and portfolio.universe_keys
+        ) else "ASTS"
+
+        def _handle_submit(payload: dict) -> None:
+            if broker is None:
+                st.error("Broker non initialisé — vérifier `.env` Alpaca.")
+                return
+            req = OrderRequest(
+                ticker=payload["ticker"],
+                qty=payload["qty"],
+                side=payload["side"],
+                asset_class=payload["asset_class"],
+                order_type=payload["order_type"],
+                limit_price=payload["limit_price"],
+                contract_symbol=payload["contract_symbol"],
+                mode=exec_mode,
+            )
+            last_eur = None
+            if not prices_eur.empty and req.ticker in prices_eur.columns:
+                try:
+                    last_eur = float(prices_eur[req.ticker].dropna().iloc[-1])
+                except Exception:
+                    last_eur = None
+            record = exec_oms.submit(
+                req,
+                broker=broker,
+                account=account,
+                last_px_eur=last_eur,
+            )
+            if record.status == "rejected":
+                st.error(f"Ordre refusé : {record.error}")
+            else:
+                st.success(
+                    f"Ordre {record.status} — broker_id={record.broker_order_id} · "
+                    f"local={record.order_id[:8]}"
+                )
+
+        render_submit_form(default_ticker=default_ticker, on_submit=_handle_submit)
+
+    with exec_sub[1]:
+        # Refresh status from broker if available
+        if broker is not None:
+            try:
+                n_updated = exec_oms.refresh_status(broker=broker)
+                if n_updated:
+                    st.caption(f"{n_updated} ordre(s) mis à jour depuis Alpaca.")
+            except Exception as exc:
+                st.warning(f"refresh status failed: {exc}")
+
+        open_df = exec_oms.list_open()
+
+        def _handle_cancel(broker_order_id: str) -> bool:
+            return exec_oms.cancel(broker_order_id, broker=broker)
+
+        render_open_orders_table(open_df, on_cancel=_handle_cancel)
+
+    with exec_sub[2]:
+        if broker is None:
+            st.info("Pas de broker connecté — réconciliation indisponible.")
+        else:
+            try:
+                broker_pos = broker_get_positions(broker)
+                rec = positions_reconcile(portfolio, broker_pos)
+                render_reconciliation(rec)
+            except Exception as exc:
+                st.warning(f"Réconciliation échouée : {exc}")
+
+    with exec_sub[3]:
+        render_audit_log(tail=80)
+
+
+# ============================================================================
+# TAB 10 — SHORT SQUEEZE SCANNER (existing)
+# ============================================================================
+with tabs[10]:
     st.title("🔥 Short Squeeze Scanner")
     st.caption("Combine SEC EDGAR (Form SHO threshold list) + Finviz screener → squeeze score.")
 
@@ -1046,9 +1166,9 @@ with tabs[9]:
 
 
 # ============================================================================
-# TAB 10 — KALMAN ELASTIC TRADING (existing)
+# TAB 11 — KALMAN ELASTIC TRADING (existing)
 # ============================================================================
-with tabs[10]:
+with tabs[11]:
     st.title("🤖 Kalman Elastic Trading")
     st.caption(f"Lecture des artefacts depuis : `{artefacts_dir()}`")
 

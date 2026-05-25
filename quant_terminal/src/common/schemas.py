@@ -223,6 +223,68 @@ class RegimeSnapshot(BaseModel):
     growth: Literal["high", "low"]
     policy: Literal["tight", "loose"]
     label: str                           # e.g. "Stagflation", "Goldilocks"
+
+
+# ---------------------------------------------------------------------------
+# Execution / OMS (Feature 1)
+# ---------------------------------------------------------------------------
+class OrderRequest(BaseModel):
+    """Pre-submission order intent — produced by the UI ticket helpers."""
+
+    ticker: str                          # underlying universe key
+    qty: int                             # positive integer; side carries the sign
+    side: Literal["BUY", "SELL"]
+    asset_class: Literal["stock", "option"]
+    order_type: Literal["market", "limit"]
+    limit_price: float | None = None
+    contract_symbol: str | None = None   # OCC option symbol when asset_class=="option"
+    time_in_force: Literal["day", "gtc"] = "day"
+    mode: Literal["paper", "live"] = "paper"
+    notes: str | None = None
+    requested_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class OrderRecord(BaseModel):
+    """Order lifecycle row — persisted in `data/execution/orders.parquet`."""
+
+    order_id: str                        # local UUID
+    broker_order_id: str | None = None
+    status: Literal[
+        "pending", "submitted", "filled", "partially_filled",
+        "canceled", "rejected", "expired",
+    ] = "pending"
+    request: OrderRequest
+    submitted_at: datetime | None = None
+    filled_at: datetime | None = None
+    filled_qty: int = 0
+    avg_fill_price: float | None = None
+    error: str | None = None
+    audit_log: list[str] = Field(default_factory=list)
+
+
+class BrokerAccount(BaseModel):
+    """Snapshot of the trading account at a point in time."""
+
+    mode: Literal["paper", "live"]
+    cash_usd: float
+    buying_power_usd: float
+    portfolio_value_usd: float
+    daytrade_count: int = 0
+    pattern_day_trader: bool = False
+    status: str = "ACTIVE"
+    asof: datetime = Field(default_factory=datetime.utcnow)
+
+
+class BrokerPosition(BaseModel):
+    """One row of broker-side positions for reconciliation."""
+
+    symbol: str
+    asset_class: Literal["stock", "option", "crypto"]
+    qty: float
+    avg_entry_price: float
+    market_value_usd: float
+    unrealized_pl_usd: float
+    side: Literal["LONG", "SHORT"] = "LONG"
     confidence: float = 1.0              # [0,1]; 0 if FRED unavailable
     metrics: dict[str, float] = Field(default_factory=dict)
     # CPI_yoy, PMI_proxy, DFF_chg_6m, T10Y2Y, T10Y3M, VIX, DXY
