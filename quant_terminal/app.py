@@ -138,6 +138,20 @@ from src.news.aggregator import aggregate_news
 from src.news.dashboards import render_news_feed, render_news_heatmap
 from src.news.rss_fetcher import fetch_news_multi
 
+# Portfolio Greeks (Feature 3)
+from src.portfolio.greeks import (
+    aggregate_greeks,
+    gamma_calendar,
+    theta_decay_schedule,
+)
+from src.portfolio.greeks_dashboards import (
+    render_gamma_calendar,
+    render_greeks_by_ticker,
+    render_greeks_strip,
+    render_theta_decay_chart,
+)
+from src.trading.journal import list_open as journal_list_open
+
 
 # ============================================================================
 # Page boilerplate
@@ -180,6 +194,34 @@ with st.sidebar:
         start_dt = datetime.combine(start_default, datetime.min.time())
         end_dt = datetime.combine(end_default, datetime.min.time())
 
+    # --- Auto-refresh (Feature 4) ------------------------------------------
+    st.divider()
+    st.subheader("Live mode")
+    refresh_choice = st.selectbox(
+        "Auto-refresh",
+        options=["Off", "15s", "30s", "60s", "5min"],
+        index=0,
+        help="Reruns the app on a timer. Cache TTLs are short on live data so refreshes are real.",
+        key="sidebar_autorefresh",
+    )
+    _refresh_ms = {
+        "Off": 0,
+        "15s": 15_000, "30s": 30_000, "60s": 60_000, "5min": 300_000,
+    }[refresh_choice]
+    if _refresh_ms > 0:
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=_refresh_ms, key="quant_live_tick")
+            st.markdown(
+                f"<span style='color:{PALETTE.profit};font-weight:600'>● LIVE</span>"
+                f" · refresh every {refresh_choice}",
+                unsafe_allow_html=True,
+            )
+        except ImportError:
+            st.warning("`streamlit-autorefresh` non installé — `pip install streamlit-autorefresh`.")
+    else:
+        st.caption(f"● <span style='color:{PALETTE.fg_muted}'>idle</span>", unsafe_allow_html=True)
+
 
 # ============================================================================
 # Parse DEGIRO globally (so every tab knows whether portfolio is available)
@@ -193,7 +235,7 @@ if uploaded is not None:
         st.sidebar.error(f"Parsing DEGIRO échoué : {exc}")
 
 
-@st.cache_data(show_spinner="Chargement des prix EUR…", ttl=60 * 60)
+@st.cache_data(show_spinner="Chargement des prix EUR…", ttl=60 * 5)  # tightened: 5 min for live mode
 def _prices(keys: tuple[str, ...], start: datetime, end: datetime) -> pd.DataFrame:
     stub = pd.DataFrame({
         "symbol": list(keys),
@@ -273,7 +315,7 @@ with tabs[0]:
         )
         st.divider()
         section = st.tabs(
-            ["Overview", "Risk engine", "Factors & correlations", "Scenarios", "Position explorer"]
+            ["Overview", "Risk engine", "Greeks", "Factors & correlations", "Scenarios", "Position explorer"]
         )
 
         with section[0]:
@@ -288,7 +330,46 @@ with tabs[0]:
             st.subheader("Limites de risque (config/risk_limits.yaml)")
             render_violations(check_limits(portfolio))
 
+        # --- Greeks (Feature 3) ---------------------------------------------
         with section[2]:
+            st.subheader("Portfolio Greeks (stocks + options)")
+            try:
+                open_options = journal_list_open()
+            except Exception:
+                open_options = pd.DataFrame()
+
+            # Beta-weighted Δ needs an SPY return series; reuse existing
+            # factor pipeline if SPY is in prices_eur.columns, else fetch.
+            spy_returns = None
+            if not prices_eur.empty and "SPY" in prices_eur.columns:
+                spy_returns = prices_eur["SPY"].pct_change().dropna()
+
+            pg = aggregate_greeks(
+                portfolio=portfolio,
+                open_options_df=open_options if not open_options.empty else None,
+                prices_eur=prices_eur,
+                benchmark_returns=spy_returns,
+            )
+            render_greeks_strip(pg)
+
+            st.markdown("##### Per-position breakdown")
+            render_greeks_by_ticker(pg.by_ticker)
+
+            if not open_options.empty:
+                st.markdown("##### Theta decay forward (30 days)")
+                schedule = theta_decay_schedule(open_options, days_ahead=30)
+                render_theta_decay_chart(schedule)
+
+                st.markdown("##### Gamma calendar")
+                cal = gamma_calendar(open_options)
+                render_gamma_calendar(cal)
+            else:
+                st.caption(
+                    "Pas de positions options ouvertes dans le journal. "
+                    "Σ Gamma/Vega/Theta = 0. Les Greeks d'actions (Δ pur) sont affichés ci-dessus."
+                )
+
+        with section[3]:
             if prices_eur.empty:
                 st.info("Pas de prix disponibles.")
             else:
@@ -312,11 +393,11 @@ with tabs[0]:
                 except Exception as exc:
                     st.warning(f"Beta estimation indisponible : {exc}")
 
-        with section[3]:
+        with section[4]:
             st.subheader("Stress tests macro")
             render_scenarios(apply_scenarios(portfolio.weights))
 
-        with section[4]:
+        with section[5]:
             choice = st.selectbox("Ticker", portfolio.universe_keys, key="portfolio_explorer_ticker")
             if not prices_eur.empty and choice in prices_eur.columns:
                 close = prices_eur[choice].dropna()
@@ -353,7 +434,7 @@ with tabs[1]:
     sel_col, _ = st.columns([1, 3])
     ticker = sel_col.selectbox("Underlying", trading_universe, key="trading_underlying")
 
-    @st.cache_data(show_spinner=f"Chargement chaîne {ticker}…", ttl=30 * 60)
+    @st.cache_data(show_spinner=f"Chargement chaîne {ticker}…", ttl=60 * 5)  # tightened: 5 min for live mode
     def _chain(t: str) -> list:
         try:
             return fetch_chain(t)
