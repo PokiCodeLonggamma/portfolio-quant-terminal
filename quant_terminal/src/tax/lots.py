@@ -10,7 +10,7 @@ provided by the importer (defaults to 1.0 for EUR-listed names).
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import pandas as pd

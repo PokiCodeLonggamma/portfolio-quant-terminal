@@ -5,7 +5,7 @@ to submit". The broker layer MUST call `validate()` before `submit_order()`.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import pandas as pd

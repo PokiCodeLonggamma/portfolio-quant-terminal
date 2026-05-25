@@ -111,15 +111,21 @@ class MaxSinglePositionRule:
             return w
 
         # Iterate: capping a line frees weight that gets pushed onto others,
-        # which may themselves end up above the cap.
+        # which may themselves end up above the cap. We track cumulative
+        # capped keys so redistribution never spills back onto an
+        # already-capped line (avoids float drift above max_pct).
+        all_capped: set[str] = set()
         for _ in range(10):
-            over_mask = w > self.max_pct
+            over_mask = w > self.max_pct + 1e-12
             if not over_mask.any():
                 break
-            capped_keys = w.index[over_mask].tolist()
+            newly_capped = w.index[over_mask].tolist()
+            all_capped.update(newly_capped)
             excess = float((w[over_mask] - self.max_pct).sum())
             w.loc[over_mask] = self.max_pct
-            w = _redistribute_excess(w, capped_keys, excess)
+            w = _redistribute_excess(w, list(all_capped), excess)
+        # Final safety clip — guarantees no float epsilon above cap.
+        w = w.clip(upper=self.max_pct)
         return w
 
 

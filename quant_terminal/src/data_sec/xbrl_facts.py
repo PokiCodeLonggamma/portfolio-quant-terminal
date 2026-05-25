@@ -18,8 +18,6 @@ resolves and document it in the returned `payload` column.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
-from functools import lru_cache
 from typing import Any
 
 import pandas as pd

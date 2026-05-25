@@ -1,7 +1,6 @@
 """Streamlit renderers for the 🎬 Event Trading tab."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
 from typing import Callable
 
 import numpy as np

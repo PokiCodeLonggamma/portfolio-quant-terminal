@@ -21,7 +21,7 @@ from typing import Any
 import pandas as pd
 
 from src.common.schemas import FilingEvent
-from src.data_sec.edgar_client import WWW_BASE, edgar_get, edgar_json, pad_cik
+from src.data_sec.edgar_client import WWW_BASE, edgar_json, pad_cik
 from src.utils.cache import read as cache_read, write as cache_write
 from src.utils.logging import get_logger
 

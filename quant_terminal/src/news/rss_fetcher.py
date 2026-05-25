@@ -125,7 +125,12 @@ def fetch_news(
     except Exception as exc:
         log.debug("rss parse failed for %s: %s", ticker, exc)
         return _safe_dataframe()
-    entries = getattr(feed, "entries", None) or feed.get("entries", []) if hasattr(feed, "get") else []
+    entries = getattr(feed, "entries", None)
+    if not entries and hasattr(feed, "get"):
+        try:
+            entries = feed.get("entries", [])
+        except Exception:
+            entries = []
     if not entries:
         return _safe_dataframe()
 

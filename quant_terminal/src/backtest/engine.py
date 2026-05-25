@@ -16,7 +16,7 @@ Design choices
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterable, Literal
 
 import numpy as np
@@ -31,27 +31,34 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+_FREQ_ALIASES = {
+    # Map legacy aliases (deprecated in pandas 2.2+) to their modern form.
+    "M": "ME", "Q": "QE", "Y": "YE", "A": "YE",
+}
+
+
 def _rebalance_index(
     index: pd.DatetimeIndex, freq: str
 ) -> set[pd.Timestamp]:
     """Return the set of bars at which we rebalance to target weights.
 
-    ``freq`` accepts pandas offset aliases: ``"M"``, ``"Q"``, ``"W"``, ``"D"``,
-    or the literal ``"never"``.
+    Accepts both legacy (``"M"``, ``"Q"``) and modern (``"ME"``, ``"QE"``)
+    pandas offset aliases. ``"D"`` rebalances every bar; ``"never"`` disables.
     """
     if freq.lower() == "never":
         return set()
     if freq.upper() == "D":
         return set(index)
+    canonical = _FREQ_ALIASES.get(freq.upper(), freq)
     # Use the *last* trading day inside each pandas period as the rebalance bar.
     try:
         grouped = pd.Series(index, index=index).groupby(
-            pd.Grouper(freq=freq)
+            pd.Grouper(freq=canonical)
         ).max()
     except (ValueError, TypeError):
         log.warning("Unknown rebalance freq %s -- defaulting to monthly", freq)
         grouped = pd.Series(index, index=index).groupby(
-            pd.Grouper(freq="M")
+            pd.Grouper(freq="ME")
         ).max()
     return set(pd.to_datetime(grouped.dropna().values))
 

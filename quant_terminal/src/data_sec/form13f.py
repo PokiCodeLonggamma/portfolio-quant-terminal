@@ -23,9 +23,7 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from src.common.schemas import FilingEvent, Holding13F
-from src.data_sec.edgar_client import WWW_BASE, edgar_get, pad_cik
-from src.data_sec.forms_index import list_filings
-from src.utils.cache import read as cache_read, write as cache_write
+from src.data_sec.edgar_client import WWW_BASE, edgar_get
 from src.utils.logging import get_logger
 
 log = get_logger(__name__)

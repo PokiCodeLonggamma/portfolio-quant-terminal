@@ -19,7 +19,6 @@ Transaction codes per SEC docs:
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from typing import Any
 from xml.etree import ElementTree as ET
 
 import pandas as pd

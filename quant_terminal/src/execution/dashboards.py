@@ -4,8 +4,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from src.common.schemas import BrokerAccount, OrderRecord
-from src.viz.theme import PALETTE, fmt_eur
+from src.common.schemas import BrokerAccount
+from src.viz.theme import PALETTE
 
 
 def render_mode_banner(mode: str) -> None:

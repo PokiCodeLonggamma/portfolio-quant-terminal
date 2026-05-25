@@ -56,7 +56,6 @@ from src.viz.theme import PALETTE, inject_streamlit_css
 from src.trading.dashboards import (
     render_chain_explorer,
     render_gex_profile,
-    render_iv_rank_pill,
     render_journal,
     render_squeeze_board,
     render_trade_ticket_form,
@@ -100,14 +99,13 @@ from src.data_sec.hyperscaler_capex import capex_panel
 from src.backtest.dashboards import (
     render_backtest_results,
     render_rule_picker,
-    render_walk_forward,
 )
 from src.backtest.engine import simulate
 from src.backtest.metrics_diff import comparison_table
 from src.backtest.rules import build_rule
 
 # Decision Support (cluster 3, wave 2)
-from src.decision.conviction import score_portfolio, suggested_weight
+from src.decision.conviction import score_portfolio
 from src.decision.dashboards import (
     render_conviction_matrix,
     render_hedge_cost,

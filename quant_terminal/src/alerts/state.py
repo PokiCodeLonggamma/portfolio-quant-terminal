@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 from src.alerts.triggers import AlertEvent
 from src.utils.config import PROJECT_ROOT

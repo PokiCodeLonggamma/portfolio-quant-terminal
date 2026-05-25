@@ -223,6 +223,7 @@ class RegimeSnapshot(BaseModel):
     growth: Literal["high", "low"]
     policy: Literal["tight", "loose"]
     label: str                           # e.g. "Stagflation", "Goldilocks"
+    confidence: float = 0.0              # 0.0 = no data; 1.0 = clean signal
 
 
 # ---------------------------------------------------------------------------

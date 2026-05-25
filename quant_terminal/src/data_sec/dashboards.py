@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.common.schemas import FilingEvent
-from src.viz.theme import PALETTE, PLOTLY_TEMPLATE, fmt_eur
+from src.viz.theme import PLOTLY_TEMPLATE, fmt_eur
 
 
 # ---------------------------------------------------------------------------

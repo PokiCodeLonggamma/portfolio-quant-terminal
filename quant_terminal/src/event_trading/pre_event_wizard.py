@@ -12,12 +12,12 @@ Workflow:
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Callable, Iterable
 
 import pandas as pd
 
-from src.common.schemas import CalendarEvent, EventSetup, OptionContract, OptionRight
+from src.common.schemas import CalendarEvent, OptionContract, OptionRight
 from src.event_trading.event_sensitivity import historical_avg_move_pct
 from src.utils.logging import get_logger
 

@@ -13,7 +13,7 @@ from src.viz.plots import (
     pie_allocation,
     scenario_bar,
 )
-from src.viz.theme import PALETTE, color_pct, fmt_eur, fmt_pct
+from src.viz.theme import fmt_eur, fmt_pct
 
 
 # ----------------------------------------------------------------------------

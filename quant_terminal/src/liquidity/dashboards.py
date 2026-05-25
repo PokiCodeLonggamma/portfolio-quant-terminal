@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.viz.theme import PALETTE, fmt_eur
+from src.viz.theme import fmt_eur
 
 
 def _fmt_days(v: float) -> str:

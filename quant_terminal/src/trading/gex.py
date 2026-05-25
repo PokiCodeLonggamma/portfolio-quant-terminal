@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
@@ -122,15 +121,18 @@ def gamma_flip_strike(gex_df: pd.DataFrame) -> float | None:
         return None
     cum = gex_df["net_gex_usd"].cumsum().to_numpy()
     strikes = gex_df["strike"].to_numpy()
-    if (cum >= 0).all() or (cum <= 0).all():
+    # All strictly positive OR all strictly negative => no crossing.
+    # We treat exact zero as a crossing point (the cumulative gamma transitions
+    # through zero at that strike).
+    if (cum > 0).all() or (cum < 0).all():
         return None
     for i in range(1, len(cum)):
-        if cum[i - 1] * cum[i] <= 0:
-            # Linear interp between adjacent strikes
+        # Zero crossing OR exact-zero touch
+        if cum[i] == 0:
+            return float(strikes[i])
+        if cum[i - 1] * cum[i] < 0:
             x0, x1 = strikes[i - 1], strikes[i]
             y0, y1 = cum[i - 1], cum[i]
-            if y1 == y0:
-                return float(x1)
             t = -y0 / (y1 - y0)
             return float(x0 + t * (x1 - x0))
     return None

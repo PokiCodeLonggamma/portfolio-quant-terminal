@@ -5,7 +5,7 @@ dated parquet directory. The same bundle is what `replay.py` reads.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 import pandas as pd

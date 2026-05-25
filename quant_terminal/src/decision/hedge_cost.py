@@ -164,29 +164,34 @@ def compute_collar(
     target_dte = max(7, int(dte_days))
     window = (max(7, target_dte - 30), target_dte + 30)
 
+    # Cache is bypassed when the caller injects a chain or a fetch_chain
+    # — that's the explicit test-seam contract, and prevents stale quotes
+    # from polluting unit-test results across sessions.
+    use_cache = chain is None and fetch_chain is None
     cache_key = f"{t}|{position_eur:.0f}|{target_dte}|{call_otm_pct:.3f}|{put_otm_pct:.3f}"
-    cached = cache_read(cache_key, namespace=_NS, max_age_seconds=15 * 60)
-    if cached is not None and not cached.empty:
-        try:
-            row = cached.iloc[0].to_dict()
-            return CollarQuote(
-                ticker=row["ticker"],
-                underlying_px_eur=float(row["underlying_px_eur"]),
-                expiry=date.fromisoformat(row["expiry"]),
-                long_put_strike=float(row["long_put_strike"]),
-                short_call_strike=float(row["short_call_strike"]),
-                put_debit_eur=float(row["put_debit_eur"]),
-                call_credit_eur=float(row["call_credit_eur"]),
-                net_premium_eur=float(row["net_premium_eur"]),
-                cost_pct_notional=float(row["cost_pct_notional"]),
-                breakeven_low=float(row["breakeven_low"]),
-                breakeven_high=float(row["breakeven_high"]),
-                max_loss_eur=float(row["max_loss_eur"]),
-                max_gain_eur=float(row["max_gain_eur"]),
-                notes=row.get("notes", ""),
-            )
-        except Exception:
-            pass
+    if use_cache:
+        cached = cache_read(cache_key, namespace=_NS, max_age_seconds=15 * 60)
+        if cached is not None and not cached.empty:
+            try:
+                row = cached.iloc[0].to_dict()
+                return CollarQuote(
+                    ticker=row["ticker"],
+                    underlying_px_eur=float(row["underlying_px_eur"]),
+                    expiry=date.fromisoformat(row["expiry"]),
+                    long_put_strike=float(row["long_put_strike"]),
+                    short_call_strike=float(row["short_call_strike"]),
+                    put_debit_eur=float(row["put_debit_eur"]),
+                    call_credit_eur=float(row["call_credit_eur"]),
+                    net_premium_eur=float(row["net_premium_eur"]),
+                    cost_pct_notional=float(row["cost_pct_notional"]),
+                    breakeven_low=float(row["breakeven_low"]),
+                    breakeven_high=float(row["breakeven_high"]),
+                    max_loss_eur=float(row["max_loss_eur"]),
+                    max_gain_eur=float(row["max_gain_eur"]),
+                    notes=row.get("notes", ""),
+                )
+            except Exception:
+                pass
 
     if chain is None:
         fetcher = fetch_chain or _resolve_chain_fetcher()
