@@ -384,6 +384,7 @@ tabs = st.tabs([
     "📡 Execution",
     "📊 Snapshot & Tax",
     "🔥 Short Squeeze",
+    "🌀 HMM Regime",
     "🤖 Kalman",
 ])
 
@@ -769,19 +770,28 @@ with tabs[1]:
             "Edit the config at `config/trading_watchlist.yaml`."
         )
         from src.watchlist.trading_board import trading_board
+        from src.watchlist.trading_board_render import render_trading_board
 
         @st.cache_data(show_spinner="Loading trading board…", ttl=60 * 5)
         def _trading_board():
             return trading_board()
 
-        col_btn, _ = st.columns([1, 4])
+        col_btn, col_view, _ = st.columns([1, 2, 3])
         if col_btn.button("↻ Refresh", key="trading_board_refresh"):
             _trading_board.clear()
+        view = col_view.radio(
+            "View",
+            ["🎴 Cards (modern)", "📋 Compact table"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="trading_board_view",
+        )
         tb_df = _trading_board()
         if tb_df.empty:
             st.info("No trading watchlist data — yfinance unreachable or YAML empty.")
+        elif view.startswith("🎴"):
+            render_trading_board(tb_df)
         else:
-            # Per-group display
             for grp_label in tb_df["group"].unique():
                 sub = tb_df[tb_df["group"] == grp_label].copy()
                 st.markdown(f"##### {grp_label}")
@@ -1829,8 +1839,14 @@ with tabs[12]:
                     with st.spinner("Running full Finviz-screened scan (this is slow)…"):
                         results = legacy_run_full_scan()
 
+            # Persist results across reruns so the zoom selector survives.
             if results is not None and not results.empty:
-                st.markdown(f"##### {len(results)} ticker(s) scored")
+                st.session_state["legacy_results"] = results
+            results = st.session_state.get("legacy_results")
+
+            if results is not None and not results.empty:
+                # ── Compact summary table with signal/score highlighting ──
+                st.markdown(f"##### 🔍 {len(results)} ticker(s) scored — pick one to zoom")
                 summary_cols = [
                     "ticker", "signal", "score_total", "score_fundamental",
                     "score_technical_bonus", "pillar1_vad", "pillar2_inst",
@@ -1847,30 +1863,143 @@ with tabs[12]:
                     show = show.drop(columns=["market_cap"])
                 st.dataframe(show, use_container_width=True, hide_index=True)
 
-                # Drill-down per ticker
-                st.markdown("##### Pillar drill-down")
-                pick = st.selectbox("Ticker", results["ticker"].tolist(), key="legacy_drilldown")
+                # ── ZOOM: TradingView + GEX + KPIs + pillar details ───────
+                st.markdown("---")
+                st.markdown("### 🔬 Zoom — full ticker drill-down")
+                pick = st.selectbox(
+                    "Pick a candidate to inspect",
+                    results["ticker"].tolist(),
+                    key="legacy_zoom_ticker",
+                )
                 row = results[results["ticker"] == pick].iloc[0]
-                pcols = st.columns(4)
-                pcols[0].metric("P1 — VAD",          f"{row['pillar1_vad']:.1f} / 4")
-                pcols[1].metric("P2 — Institutional", f"{row['pillar2_inst']:.1f} / 4")
-                pcols[2].metric("P3 — Divergence",    f"{row['pillar3_div']:.1f} / 2")
-                pcols[3].metric("P4 — Technical",     f"{row['pillar4_tech']:.1f} / 3")
-                for n, key in [("Pillar 1 — VAD", "pillar1_details"),
-                               ("Pillar 2 — Institutional", "pillar2_details"),
-                               ("Pillar 3 — Divergence", "pillar3_details"),
-                               ("Pillar 4 — Technical", "pillar4_details")]:
-                    d = row.get(key) or {}
-                    if d:
-                        st.markdown(f"**{n}**")
-                        for k, v in d.items():
-                            st.markdown(f"- `{k}` — {v}")
+
+                # Build the detail dict the zoom view expects
+                details = {
+                    "score_total": float(row.get("score_total", 0.0) or 0.0),
+                    "signal":      str(row.get("signal", "—")),
+                    "sector":      str(row.get("sector", "")),
+                    "price":       float(row.get("price", 0.0) or 0.0),
+                    "market_cap":  float(row.get("market_cap", 0.0) or 0.0),
+                    "short_float": float(row.get("short_float", 0.0) or 0.0),
+                    "days_to_cover": float(row.get("days_to_cover", 0.0) or 0.0),
+                    "inst_trans":  float(row.get("inst_trans", 0.0) or 0.0),
+                }
+                pillar_d = {
+                    "Pillar 1 — VAD":           row.get("pillar1_details") or {},
+                    "Pillar 2 — Institutional": row.get("pillar2_details") or {},
+                    "Pillar 3 — Divergence":    row.get("pillar3_details") or {},
+                    "Pillar 4 — Technical":     row.get("pillar4_details") or {},
+                }
+
+                # Try a live GEX pull on the zoomed-in ticker (cached chain)
+                gex_df = pd.DataFrame()
+                zoom_spot = None
+                zoom_flip = None
+                try:
+                    from src.trading.gex import compute_gex, gamma_flip_strike
+                    from src.trading.options_chain import fetch_chain as _fc
+                    from src.trading.options_chain import _safe_spot as _ss
+                    zoom_chain = _fc(pick)
+                    zoom_spot = _ss(pick)
+                    if zoom_chain and zoom_spot:
+                        gex_df = compute_gex(zoom_chain, zoom_spot)
+                        zoom_flip = gamma_flip_strike(gex_df)
+                except Exception as gex_exc:
+                    st.caption(f"GEX live unavailable for {pick}: {gex_exc}")
+
+                from src.scanners.squeeze_zoom import render_squeeze_zoom
+                render_squeeze_zoom(
+                    pick, details,
+                    gex_df=gex_df, spot=zoom_spot, gamma_flip=zoom_flip,
+                    pillar_details=pillar_d,
+                )
 
 
 # ============================================================================
-# TAB 13 — KALMAN ELASTIC TRADING (existing)
+# TAB 13 — HMM REGIME (volatility state machine)
 # ============================================================================
 with tabs[13]:
+    st.title("🌀 HMM Regime Engine")
+    st.caption(
+        "Gaussian Hidden Markov Model on benchmark log-returns. "
+        "Detects volatility regimes (LOW / MID / HIGH) with posterior probabilities, "
+        "transition matrix, and expected duration per state."
+    )
+
+    from src.regime.hmm import fit_volatility_hmm
+    from src.regime.hmm_dashboards import (
+        render_model_diagnostics,
+        render_regime_hero,
+        render_regime_path,
+        render_regime_posterior,
+        render_stationary,
+        render_transition_heatmap,
+    )
+
+    cfg_col1, cfg_col2, cfg_col3, cfg_col4 = st.columns([2, 1, 1, 1])
+    hmm_ticker = cfg_col1.selectbox(
+        "Benchmark ticker",
+        ["SPY", "QQQ", "IWM", "^VIX", "TLT", "GLD", "XLE", "XLF"],
+        key="hmm_ticker",
+    )
+    hmm_states = cfg_col2.selectbox("States", [2, 3, 4], index=1, key="hmm_states")
+    hmm_lookback = cfg_col3.selectbox(
+        "Lookback (days)", [252, 504, 1000, 2000], index=2, key="hmm_lookback",
+    )
+    hmm_feature = cfg_col4.selectbox(
+        "Feature", ["abs", "sq", "raw"], index=0, key="hmm_feature",
+        help="abs/sq = vol regimes; raw = drift+vol jointly",
+    )
+
+    @st.cache_data(show_spinner="Fitting HMM…", ttl=60 * 30)
+    def _load_returns_for_hmm(ticker: str, lookback: int) -> pd.DataFrame:
+        import numpy as np
+        import yfinance as yf
+        hist = yf.download(ticker, period=f"{lookback + 30}d", progress=False,
+                            auto_adjust=True, threads=False)
+        if hist is None or hist.empty:
+            return pd.DataFrame()
+        if isinstance(hist.columns, pd.MultiIndex):
+            hist.columns = hist.columns.get_level_values(0)
+        close = hist["Close"].astype(float).dropna()
+        log_ret = np.log(close / close.shift(1)).dropna()
+        return pd.DataFrame({"close": close, "log_ret": log_ret}).dropna()
+
+    @st.cache_data(show_spinner="Fitting HMM…", ttl=60 * 30)
+    def _fit_hmm(ticker: str, lookback: int, n_states: int, feature: str):
+        data = _load_returns_for_hmm(ticker, lookback)
+        if data.empty:
+            return None, None
+        result = fit_volatility_hmm(
+            data["log_ret"], n_states=n_states, feature=feature,
+        )
+        return result, data
+
+    result, data = _fit_hmm(hmm_ticker, int(hmm_lookback), int(hmm_states), hmm_feature)
+
+    if result is None:
+        st.warning(f"Could not fetch enough data for {hmm_ticker}.")
+    else:
+        render_regime_hero(result, hmm_ticker)
+        st.markdown("##### State posterior probabilities")
+        render_regime_posterior(result, hmm_ticker)
+        st.markdown("##### Price + regime overlay")
+        render_regime_path(result, data["close"], hmm_ticker)
+        col_t, col_s = st.columns([1, 1])
+        with col_t:
+            st.markdown("##### Transition matrix")
+            render_transition_heatmap(result, hmm_ticker)
+        with col_s:
+            st.markdown("##### Regime statistics")
+            render_stationary(result)
+        st.markdown("##### Model diagnostics")
+        render_model_diagnostics(result)
+
+
+# ============================================================================
+# TAB 14 — KALMAN ELASTIC TRADING (existing — moved from 13 after HMM insert)
+# ============================================================================
+with tabs[14]:
     st.title("🤖 Kalman Elastic Trading")
     st.caption(f"Lecture des artefacts depuis : `{artefacts_dir()}`")
 
