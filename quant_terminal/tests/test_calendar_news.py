@@ -300,12 +300,14 @@ def test_fetch_news_parses_stub_feed(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 def test_aggregate_news_returns_long_dataframe():
     def _fake_rss(ticker, lookback_days=7):
-        now = datetime.utcnow()
+        # Use a fixed reference at noon UTC so "today" entries always land on
+        # the same calendar date regardless of when the test runs.
+        now = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
         if ticker == "ASTS":
             return pd.DataFrame([
                 {"ticker": "ASTS", "ts": now, "title": "ASTS surges after upgrade",
                  "link": "http://x/1", "source": "MW"},
-                {"ticker": "ASTS", "ts": now - timedelta(hours=10),
+                {"ticker": "ASTS", "ts": now - timedelta(hours=2),
                  "title": "ASTS beats estimates", "link": "http://x/2", "source": "Reuters"},
                 {"ticker": "ASTS", "ts": now - timedelta(days=2),
                  "title": "ASTS plunges 10%", "link": "http://x/3", "source": "FT"},
