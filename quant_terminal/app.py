@@ -58,6 +58,25 @@ from src.viz.theme import (
 
 # --- new wave-1 cluster imports ---------------------------------------------
 # Trading (cluster 5)
+from src.trading.gex_enrich import max_pain, put_call_ratio, skew_25_delta
+from src.trading.iv_analytics import (
+    iv_term_structure,
+    realised_vs_implied,
+    vol_smile,
+)
+from src.trading.universe_scanner import DEFAULT_UNIVERSE, scan_universe
+from src.data_sec.overview import (
+    dilution_overview,
+    insider_activity_overview,
+    kpi_strip as smart_money_kpi_strip,
+    runway_overview,
+)
+from src.scanners.short_squeeze import (
+    persist_scan as squeeze_persist_scan,
+    top_candidates as squeeze_top_candidates,
+)
+from src.news.stocktwits import aggregate_cashtag, fetch_cashtag
+
 from src.trading.dashboards import (
     render_chain_explorer,
     render_gex_profile,
@@ -515,21 +534,60 @@ with tabs[1]:
 
     contracts = _chain(ticker)
 
-    trading_sub = st.tabs(
-        ["Chain Explorer", "GEX Profile", "Trade Ticket", "Journal", "Squeeze Score"]
-    )
+    trading_sub = st.tabs([
+        "🎯 Universe Scanner",
+        "Chain Explorer",
+        "GEX+ (max pain · P/C · skew)",
+        "IV Analytics",
+        "Trade Ticket",
+        "Journal",
+        "Squeeze Score",
+    ])
 
+    # --- Sub-tab 0 — Universe Scanner ---------------------------------------
     with trading_sub[0]:
+        st.markdown("### Best Δ-25 setups across the universe")
+        st.caption(
+            "Score = (low IV bias) + (negative gamma zone hit) + (extreme P/C ratio). "
+            "Refreshed at the cache TTL of the chain (5min)."
+        )
+
+        @st.cache_data(show_spinner="Scanning universe…", ttl=60 * 10)
+        def _scan(_universe: tuple[str, ...], _spots: dict):
+            return scan_universe(list(_universe), fetch_chain_fn=fetch_chain,
+                                 spot_lookup=_spots)
+
+        # Universe = sector ETFs + portfolio tickers
+        scan_universe_list = list(DEFAULT_UNIVERSE)
+        if portfolio is not None:
+            scan_universe_list = sorted(set(scan_universe_list + portfolio.universe_keys))
+        spot_lookup = {}
+        if not prices_eur.empty:
+            for col in prices_eur.columns:
+                s = prices_eur[col].dropna()
+                if not s.empty:
+                    spot_lookup[col] = float(s.iloc[-1])
+
+        if st.button("▶ Run scan now", key="scanner_run_btn") or False:
+            _scan.clear()  # invalidate cache for manual refresh
+        df_scan = _scan(tuple(scan_universe_list), spot_lookup)
+        if df_scan.empty:
+            st.info("Scan returned nothing — check chain providers and live spot lookups.")
+        else:
+            st.dataframe(df_scan.head(20), use_container_width=True, hide_index=True)
+            st.caption(f"{len(df_scan)} tickers scanned · asof {df_scan['asof'].iloc[0]}")
+
+    with trading_sub[1]:
         if not contracts:
             st.info("Aucune chaîne d'options disponible (Alpaca + yfinance ont échoué).")
         else:
-            # Spot from the latest price in price panel (fallback to mid of ATM)
             spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
                 not prices_eur.empty and ticker in prices_eur.columns
             ) else 0.0
             render_chain_explorer(contracts, underlying=ticker, spot=spot, highlight_delta=0.25)
 
-    with trading_sub[1]:
+    # --- Sub-tab 2 — GEX + enrichments --------------------------------------
+    with trading_sub[2]:
         if not contracts:
             st.info("Pas de chaîne — GEX indisponible.")
         else:
@@ -538,19 +596,94 @@ with tabs[1]:
             ) else 0.0
             try:
                 gex_df = compute_gex(contracts, spot)
-                # gamma flip = closest strike where cumulative GEX crosses zero
-                flip = None
-                if not gex_df.empty:
-                    cum = gex_df.sort_values("strike")["net_gex_usd"].cumsum()
-                    sign = (cum >= 0).astype(int)
-                    flips = sign.diff().abs().fillna(0).astype(bool)
-                    if flips.any():
-                        flip = float(gex_df.sort_values("strike").iloc[flips.values.argmax()]["strike"])
+                from src.trading.gex import gamma_flip_strike
+                flip = gamma_flip_strike(gex_df)
                 render_gex_profile(gex_df, spot=spot, gamma_flip=flip)
-            except Exception as exc:
-                st.warning(f"GEX failed: {exc}")
 
-    with trading_sub[2]:
+                # Enrichments row
+                st.markdown("##### Setup metrics")
+                mp = max_pain(contracts)
+                pc = put_call_ratio(contracts)
+                sk = skew_25_delta(contracts)
+                cols = st.columns(4)
+                cols[0].metric("Max pain", f"{mp:.2f}" if mp else "n/a",
+                               help="Strike that minimises option-holder payout. Gravitational anchor near expiry.")
+                cols[1].metric("P/C ratio (OI)", f"{pc['overall_pc_ratio']:.2f}",
+                               help=f"Puts: {pc['total_put']:,} · Calls: {pc['total_call']:,}")
+                cols[2].metric("25Δ skew (IV)",
+                               f"{sk['skew'] * 100:+.1f} pts" if sk['skew'] is not None else "n/a",
+                               help="Positive = put more expensive than call (bearish skew).")
+                cols[3].metric("Gamma flip", f"{flip:.2f}" if flip else "n/a")
+            except Exception as exc:
+                st.warning(f"GEX+ failed: {exc}")
+
+    # --- Sub-tab 3 — IV Analytics (term, smile, RV vs IV) -------------------
+    with trading_sub[3]:
+        if not contracts:
+            st.info("Pas de chaîne — IV analytics indisponibles.")
+        else:
+            spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
+                not prices_eur.empty and ticker in prices_eur.columns
+            ) else 0.0
+            iv_sub = st.tabs(["Term structure", "Vol smile", "RV vs IV"])
+            with iv_sub[0]:
+                term = iv_term_structure(contracts, spot)
+                if term.empty:
+                    st.info("Pas d'IV exploitables sur la chain.")
+                else:
+                    import plotly.express as px
+                    fig = px.line(term, x="dte_days", y="atm_iv_avg",
+                                  markers=True, title=f"ATM IV term structure — {ticker}")
+                    fig.update_layout(yaxis_tickformat=".0%",
+                                       xaxis_title="DTE (days)",
+                                       yaxis_title="ATM IV")
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.dataframe(term, use_container_width=True, hide_index=True)
+
+            with iv_sub[1]:
+                expiries = sorted({c.expiry for c in contracts})
+                pick = st.selectbox("Expiry", expiries, key=f"smile_expiry_{ticker}")
+                smile = vol_smile(contracts, pick, spot)
+                if smile.empty:
+                    st.info("Smile indisponible pour cette expiry.")
+                else:
+                    import plotly.graph_objects as go
+                    fig = go.Figure()
+                    if "call_iv" in smile.columns:
+                        fig.add_scatter(x=smile["moneyness"], y=smile["call_iv"],
+                                        mode="markers+lines", name="Call IV",
+                                        line={"color": "#22C55E"})
+                    if "put_iv" in smile.columns:
+                        fig.add_scatter(x=smile["moneyness"], y=smile["put_iv"],
+                                        mode="markers+lines", name="Put IV",
+                                        line={"color": "#EF4444"})
+                    fig.update_layout(title=f"Vol smile — {ticker} @ {pick.isoformat()}",
+                                       xaxis_title="Moneyness (strike/spot - 1)",
+                                       yaxis_title="IV",
+                                       yaxis_tickformat=".0%")
+                    st.plotly_chart(fig, use_container_width=True)
+
+            with iv_sub[2]:
+                if prices_eur.empty or ticker not in prices_eur.columns:
+                    st.info("Pas de série de prix pour calculer la RV.")
+                else:
+                    close = prices_eur[ticker].dropna()
+                    term = iv_term_structure(contracts, spot)
+                    atm_iv = float(term["atm_iv_avg"].dropna().iloc[0]) if (
+                        not term.empty and not term["atm_iv_avg"].dropna().empty
+                    ) else 0.0
+                    rv_iv = realised_vs_implied(close, atm_iv, window=20)
+                    cols = st.columns(4)
+                    cols[0].metric("RV 20d (annualised)", f"{rv_iv['rv'] * 100:.1f}%")
+                    cols[1].metric("ATM IV (now)", f"{rv_iv['iv'] * 100:.1f}%")
+                    cols[2].metric("IV − RV", f"{rv_iv['iv_minus_rv'] * 100:+.1f} pts")
+                    cols[3].metric(
+                        "Premium %",
+                        f"{rv_iv['premium_pct'] * 100:+.1f}%",
+                        help="Positive = vol expensive vs realised. Negative = cheap.",
+                    )
+
+    with trading_sub[4]:
         net_ev = portfolio.total_value_eur + float(getattr(portfolio, "cash_eur", 0.0) or 0.0) if portfolio else 10_000.0
         if portfolio is None:
             st.caption("Pas de DEGIRO chargé — debit cap calculé sur un EV fictif de 10 000 EUR.")
@@ -560,7 +693,7 @@ with tabs[1]:
             fetch_chain_fn=fetch_chain,
         )
 
-    with trading_sub[3]:
+    with trading_sub[5]:
         try:
             journal_df = load_journal()
             open_df = journal_df[journal_df["closed_ts"].isna()] if not journal_df.empty else pd.DataFrame()
@@ -569,7 +702,15 @@ with tabs[1]:
         except Exception as exc:
             st.info(f"Journal vide ou erreur de lecture : {exc}")
 
-    with trading_sub[4]:
+    with trading_sub[6]:
+        # Surface the live Finviz/SEC squeeze scan + the chain-derived score side-by-side
+        st.markdown("### Squeeze scanner top candidates (Finviz + SEC SHO)")
+        scan_df = squeeze_top_candidates()
+        if scan_df is not None and not scan_df.empty:
+            st.dataframe(scan_df, use_container_width=True, hide_index=True)
+        else:
+            st.caption("Aucun scan persistant — lancer un scan depuis l'onglet **🔥 Short Squeeze** d'abord.")
+
         st.markdown("### Composite gamma-squeeze score")
         st.caption("Net GEX <0 ± 5% + call volume × 2 + OTM call OI Δ +30% sur 5j.")
         # Build a minimal scores_df from the current ticker (real implementation
@@ -714,6 +855,7 @@ with tabs[4]:
     st.caption("SEC EDGAR — Form 4 · 13F · Dilution · Cash runway · ETF flows · Gov contracts · Hyperscaler capex.")
 
     sec_sub = st.tabs([
+        "🌐 Overview",
         "Insider (Form 4)",
         "Dilution Radar",
         "Cash Runway",
@@ -727,7 +869,67 @@ with tabs[4]:
         "BWXT", "ALB", "NTR", "GOOG",
     ]
 
+    # --- Sub-tab 0 — Cross-ticker overview ---------------------------------
     with sec_sub[0]:
+        st.markdown("### Smart-Money cross-ticker view")
+        st.caption("Single pull across the whole universe — no per-ticker selector required.")
+
+        @st.cache_data(show_spinner="Aggregating SEC data across universe…", ttl=60 * 30)
+        def _smart_money_overview(_universe: tuple[str, ...]):
+            ins = insider_activity_overview(list(_universe), lookback_days=90)
+            dil = dilution_overview(list(_universe))
+            run = runway_overview(list(_universe))
+            kpis = smart_money_kpi_strip(ins, dil, run)
+            return ins, dil, run, kpis
+
+        try:
+            ins_df, dil_df, run_df, kpis = _smart_money_overview(tuple(universe_for_sec))
+            cols = st.columns(4)
+            cols[0].metric(
+                "Insider net (90d)",
+                f"${(kpis.get('insider_buy_usd', 0) + kpis.get('insider_sell_usd', 0)) / 1e6:.1f}M",
+            )
+            cols[1].metric("Top insider buyer", kpis.get("top_insider_buy_ticker", "—"))
+            cols[2].metric(
+                "Dilution-risk count",
+                f"{kpis.get('n_high_dilution', 0)}",
+                help=kpis.get("high_dilution_tickers", ""),
+            )
+            cols[3].metric(
+                "Runway < 2Q",
+                f"{kpis.get('n_runway_short', 0)}",
+                help=kpis.get("runway_short_tickers", ""),
+            )
+
+            st.markdown("##### Top insider transactions (90d)")
+            if ins_df is not None and not ins_df.empty:
+                show_cols = [c for c in ["ticker", "reporter_name", "reporter_role",
+                                          "transaction_date", "code", "shares", "price",
+                                          "value_usd"] if c in ins_df.columns]
+                st.dataframe(ins_df[show_cols].head(20),
+                             use_container_width=True, hide_index=True)
+            else:
+                st.caption("No insider transactions parsed for this universe.")
+
+            colA, colB = st.columns(2)
+            with colA:
+                st.markdown("##### Dilution-risk leaderboard")
+                if dil_df is not None and not dil_df.empty:
+                    st.dataframe(dil_df.head(15),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.caption("No dilution data.")
+            with colB:
+                st.markdown("##### Lowest cash runway")
+                if run_df is not None and not run_df.empty:
+                    st.dataframe(run_df.head(15),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.caption("No runway data.")
+        except Exception as exc:
+            st.warning(f"Overview failed: {exc}")
+
+    with sec_sub[1]:
         sel = st.selectbox("Ticker", universe_for_sec, key="sec_insider_ticker")
         try:
             f4 = insider_summary(sel, lookback_days=180)
@@ -735,7 +937,7 @@ with tabs[4]:
         except Exception as exc:
             st.warning(f"Form 4 indisponible : {exc}")
 
-    with sec_sub[1]:
+    with sec_sub[2]:
         rows = []
         for t in universe_for_sec:
             try:
@@ -745,7 +947,7 @@ with tabs[4]:
                 continue
         render_dilution_panel(pd.DataFrame(rows))
 
-    with sec_sub[2]:
+    with sec_sub[3]:
         rows = []
         for t in universe_for_sec:
             try:
@@ -755,21 +957,21 @@ with tabs[4]:
                 continue
         render_runway_panel(pd.DataFrame(rows))
 
-    with sec_sub[3]:
+    with sec_sub[4]:
         try:
             flows = thematic_flows_panel(window_days=90)
             render_etf_flows_panel(flows)
         except Exception as exc:
             st.warning(f"ETF flows indisponibles : {exc}")
 
-    with sec_sub[4]:
+    with sec_sub[5]:
         st.subheader("DoD program allocations (PB-26)")
         try:
             render_gov_capex_panel(budget_allocations(), capex_panel())
         except Exception as exc:
             st.warning(f"Gov/Capex panels indisponibles : {exc}")
 
-    with sec_sub[5]:
+    with sec_sub[6]:
         st.subheader("Hyperscaler quarterly capex (USD bn)")
         try:
             cdf = capex_panel()
@@ -910,7 +1112,8 @@ with tabs[6]:
     st.title("📅 Catalysts & News")
     st.caption("Earnings · FOMC/ECB/OPEC · NRC · Launches · Implied moves · News flow + sentiment.")
 
-    cal_sub = st.tabs(["Catalyst Calendar", "Earnings", "Macro Board", "Launches", "News Flow"])
+    cal_sub = st.tabs(["Catalyst Calendar", "Earnings", "Macro Board",
+                        "Launches", "News Flow", "💬 Stocktwits cashtag"])
 
     universe_for_cal = (
         portfolio.universe_keys if portfolio is not None
@@ -977,6 +1180,38 @@ with tabs[6]:
             render_news_feed(news_df)
         else:
             st.info("Aucun article retourné par Google News (rate limit ou ticker rare).")
+
+    # --- Sub-tab 5 — Stocktwits cashtag monitor ----------------------------
+    with cal_sub[5]:
+        st.markdown("### Cashtag posts (Stocktwits free API)")
+        st.caption(
+            "Free alternative to paid Twitter/X API. Rate-limited ~200 req / 30 min — "
+            "results cached 5 minutes."
+        )
+        twit_universe = universe_for_cal[:8]
+        col_t1, col_t2 = st.columns([1, 3])
+        focus_ticker = col_t1.selectbox("Focus ticker", twit_universe, key="stwits_focus")
+        try:
+            agg = aggregate_cashtag(list(twit_universe), lookback_hours=24)
+        except Exception as exc:
+            st.warning(f"Stocktwits aggregate failed: {exc}")
+            agg = pd.DataFrame()
+        if not agg.empty:
+            st.markdown("##### 24h sentiment per ticker")
+            st.dataframe(agg, use_container_width=True, hide_index=True)
+        try:
+            feed = fetch_cashtag(focus_ticker, limit=30)
+        except Exception as exc:
+            st.warning(f"Stocktwits feed failed: {exc}")
+            feed = pd.DataFrame()
+        if not feed.empty:
+            st.markdown(f"##### Latest posts — ${focus_ticker}")
+            display_cols = [c for c in ["ts", "user", "user_followers", "body",
+                                          "sentiment_bull", "sentiment_bear", "likes"]
+                            if c in feed.columns]
+            st.dataframe(feed[display_cols].head(20), use_container_width=True, hide_index=True)
+        else:
+            st.info(f"Aucun post Stocktwits récent pour ${focus_ticker}.")
 
 
 # ============================================================================
@@ -1317,8 +1552,16 @@ with tabs[12]:
             st.warning("Finviz n'a rien retourné — vérifier la connectivité ou bloquage UA.")
         else:
             merged = merge_signals(finviz, sho)
+            # Persist so the Trading Bench Squeeze sub-tab + Alerts can read it
+            try:
+                squeeze_persist_scan(merged)
+            except Exception:
+                pass
             st.subheader(f"Top candidats ({len(merged)} tickers)")
             st.dataframe(merged.head(50), use_container_width=True, hide_index=True)
+            st.caption(
+                "✔ Scan persisté — surfaceé automatiquement dans `🎯 Trading Bench › Squeeze Score`."
+            )
 
 
 # ============================================================================

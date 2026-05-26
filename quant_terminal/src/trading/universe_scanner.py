@@ -13,7 +13,7 @@ Output is a tidy DataFrame consumable by render_universe_scanner.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import datetime
 from typing import Callable
 
 import pandas as pd
