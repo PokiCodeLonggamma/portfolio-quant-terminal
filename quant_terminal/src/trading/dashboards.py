@@ -119,10 +119,24 @@ def render_chain_explorer(
 # ---------------------------------------------------------------------------
 def render_gex_profile(
     gex_df: pd.DataFrame, spot: float | None, gamma_flip: float | None,
+    *, contracts: list | None = None,
 ) -> None:
     st.markdown("### Net Gamma Exposure profile")
     if gex_df is None or gex_df.empty:
-        st.info("No GEX data — chain missing greeks or open interest.")
+        # Diagnostic — split the two failure modes
+        if contracts is None or len(contracts) == 0:
+            st.info("No GEX data — chain is empty.")
+        else:
+            n_gamma = sum(1 for c in contracts if getattr(c, "gamma", None) is not None)
+            n_oi = sum(
+                1 for c in contracts
+                if getattr(c, "open_interest", None) and c.open_interest > 0
+            )
+            st.info(
+                f"No GEX data — chain has {len(contracts)} contracts, "
+                f"{n_gamma} with γ, {n_oi} with OI. "
+                f"Greeks/OI must both be present. Try another expiry or ticker."
+            )
         return
 
     colours = [PALETTE.profit if v >= 0 else PALETTE.loss for v in gex_df["net_gex_usd"]]

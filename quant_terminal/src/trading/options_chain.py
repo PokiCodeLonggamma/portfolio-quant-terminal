@@ -70,12 +70,42 @@ def _safe_spot(underlying: str) -> float | None:
         end = datetime.utcnow()
         start = end - timedelta(days=10)
         series = load_one(underlying, start, end)
-        if series is None or series.empty:
-            return None
-        return float(series.dropna().iloc[-1])
+        if series is not None and not series.empty:
+            return float(series.dropna().iloc[-1])
     except Exception as exc:
-        log.debug("spot lookup failed for %s: %s", underlying, exc)
-        return None
+        log.debug("spot lookup via loader failed for %s: %s", underlying, exc)
+    # yfinance fast_info fallback — works for almost any US-listed symbol.
+    try:
+        import yfinance as yf
+        cfg = get_config()
+        yf_sym = cfg.yfinance_symbol(underlying) or underlying
+        tk = yf.Ticker(yf_sym)
+        fi = getattr(tk, "fast_info", None)
+        candidates = []
+        if fi is not None:
+            for attr in ("last_price", "lastPrice", "regular_market_price"):
+                try:
+                    candidates.append(getattr(fi, attr, None))
+                except Exception:
+                    pass
+            if hasattr(fi, "get"):
+                for k in ("last_price", "lastPrice", "regularMarketPrice"):
+                    try:
+                        candidates.append(fi.get(k))
+                    except Exception:
+                        pass
+        for c in candidates:
+            if c is None:
+                continue
+            try:
+                px = float(c)
+            except (TypeError, ValueError):
+                continue
+            if px > 0:
+                return px
+    except Exception as exc:
+        log.debug("yfinance fast_info spot fallback failed for %s: %s", underlying, exc)
+    return None
 
 
 def _to_record(c: OptionContract) -> dict[str, Any]:
@@ -104,7 +134,11 @@ def _from_record(rec: dict[str, Any]) -> OptionContract:
 
 
 def _quality_ok(contracts: list[OptionContract]) -> bool:
-    """Heuristic: at least 30% of contracts must have a usable price+greek."""
+    """Heuristic: at least 30% of contracts must have a usable price+greek,
+    AND the chain as a whole must have at least *some* open interest — without
+    OI, downstream GEX/max-pain/PC-ratio are degenerate so we'd rather pay
+    the yfinance round-trip for a chain that actually has the data.
+    """
     if not contracts:
         return False
     usable = sum(
@@ -113,7 +147,11 @@ def _quality_ok(contracts: list[OptionContract]) -> bool:
         and c.delta is not None
     )
     ratio = usable / len(contracts)
-    return ratio >= (1.0 - _ALPACA_QUALITY_THRESHOLD)
+    if ratio < (1.0 - _ALPACA_QUALITY_THRESHOLD):
+        return False
+    # Need at least 5 contracts with non-zero OI for GEX to produce anything.
+    oi_count = sum(1 for c in contracts if c.open_interest and c.open_interest > 0)
+    return oi_count >= 5
 
 
 def _in_dte_window(expiry: date, window: tuple[int, int]) -> bool:
@@ -307,14 +345,22 @@ def fetch_chain(
     # If Alpaca returned junk (no greeks, no prices for most contracts — common
     # on illiquid small-caps like ASTS / IONQ paper data), retry via yfinance
     # and merge greeks via BS-inverse.
+    spot = _safe_spot(underlying)
     if not contracts or not _quality_ok(contracts):
         if contracts:
             log.info("Alpaca chain for %s low-quality (%d contracts) → yfinance fallback",
                      underlying, len(contracts))
-        spot = _safe_spot(underlying)
         yf_contracts = _fetch_yfinance(underlying, expiry, target_dte_window, spot)
         if yf_contracts:
             contracts = yf_contracts
+
+    # Final greek-completion pass: even when Alpaca passed quality (delta+mid OK)
+    # it commonly ships chains without `gamma`. compute_gex would then silently
+    # skip every contract. Run BS-inverse to fill the gaps when a spot is known.
+    if contracts and spot is not None and spot > 0:
+        missing_gamma = any(c.gamma is None and c.iv is not None for c in contracts)
+        if missing_gamma:
+            contracts = enrich_with_greeks(contracts, spot=spot, r=_RISK_FREE)
 
     if contracts:
         try:

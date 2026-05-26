@@ -1,10 +1,18 @@
 """Thematic ETF flow estimates via yfinance.
 
 True ETF creation/redemption data is paywalled (ICI, ETF.com). Our cheap
-proxy: ``daily_flow_usd = (shares_out[t] - shares_out[t-1]) * nav[t]``.
-``yfinance.Ticker(symbol).info`` exposes both `sharesOutstanding` and
-recent NAV. We snapshot once a day, append to a parquet cache and use the
-diff series as flows.
+proxy is a **signed turnover** estimate:
+
+    daily_flow_usd ≈ sign(close-open) * volume * close
+
+Rationale: net daily flows on a thematic ETF correlate strongly with signed
+dollar turnover when shares-outstanding telemetry is not available (yfinance
+free only exposes the *current* `sharesOutstanding`, not a time series). The
+sign captures whether the session pushed price up (proxy for net creations)
+or down (net redemptions).
+
+This is **not** the gold-standard flow series, but the directional signal is
+close enough to be actionable cross-thematic (which sector is being bid).
 
 Thematic ETFs we track:
   URA  — Global X Uranium ETF              (uranium/SMR thesis)
@@ -89,17 +97,21 @@ def etf_flows(ticker: str, *, window_days: int = 90) -> pd.DataFrame:
     if hist.empty:
         return pd.DataFrame(columns=_EMPTY_FLOW_COLS)
 
+    # Required columns for signed-turnover proxy.
+    needed = {"Open", "Close", "Volume"}
+    if not needed.issubset(hist.columns):
+        return pd.DataFrame(columns=_EMPTY_FLOW_COLS)
+
     px = hist["Close"].astype(float)
+    op = hist["Open"].astype(float)
+    vol = hist["Volume"].astype(float)
+    sign = (px - op).apply(lambda x: 1.0 if x > 0 else (-1.0 if x < 0 else 0.0))
     df = pd.DataFrame(index=px.index)
     df["date"] = df.index.date
     df["nav"] = px.values
     df["shares_out"] = shares_out
-    df["aum_usd"] = df["shares_out"] * df["nav"]
-    # No historic shares-out from yfinance free; use rolling change of AUM
-    # as a flow approximation (price-corrected).
-    df["daily_flow_usd"] = df["aum_usd"].diff().fillna(0.0) - (
-        df["shares_out"] * df["nav"].diff().fillna(0.0)
-    )
+    df["aum_usd"] = df["shares_out"] * df["nav"] if shares_out else 0.0
+    df["daily_flow_usd"] = (sign * vol * px).values
     out = df.reset_index(drop=True)[_EMPTY_FLOW_COLS]
     cache_write(cache_key, out, namespace="etf_flows")
     return out

@@ -118,6 +118,7 @@ from src.data_sec.dod_budget import budget_allocations
 from src.data_sec.etf_flows import thematic_flows_panel
 from src.data_sec.form4 import insider_summary
 from src.data_sec.hyperscaler_capex import capex_panel
+from src.data_sec.sam_gov import awards_dataframe
 
 # Backtest (cluster 7)
 from src.backtest.dashboards import (
@@ -158,6 +159,8 @@ from src.calendar_engine.macro_events import load_2026
 from src.calendar_engine.space_launches import load_launches
 from src.news.aggregator import aggregate_news
 from src.news.dashboards import render_news_feed, render_news_heatmap
+from src.news.llm_summarizer import summarise_transcript as llm_summarise_transcript
+from src.news.realtime import refresh_realtime
 from src.news.rss_fetcher import fetch_news_multi
 
 # Portfolio Greeks (Feature 3)
@@ -598,7 +601,7 @@ with tabs[1]:
                 gex_df = compute_gex(contracts, spot)
                 from src.trading.gex import gamma_flip_strike
                 flip = gamma_flip_strike(gex_df)
-                render_gex_profile(gex_df, spot=spot, gamma_flip=flip)
+                render_gex_profile(gex_df, spot=spot, gamma_flip=flip, contracts=contracts)
 
                 # Enrichments row
                 st.markdown("##### Setup metrics")
@@ -967,7 +970,11 @@ with tabs[4]:
     with sec_sub[5]:
         st.subheader("DoD program allocations (PB-26)")
         try:
-            render_gov_capex_panel(budget_allocations(), capex_panel())
+            try:
+                awards = awards_dataframe(list(universe_for_sec), lookback_days=180)
+            except Exception:
+                awards = pd.DataFrame()
+            render_gov_capex_panel(awards, budget_allocations(), capex_panel())
         except Exception as exc:
             st.warning(f"Gov/Capex panels indisponibles : {exc}")
 
@@ -1112,8 +1119,11 @@ with tabs[6]:
     st.title("📅 Catalysts & News")
     st.caption("Earnings · FOMC/ECB/OPEC · NRC · Launches · Implied moves · News flow + sentiment.")
 
-    cal_sub = st.tabs(["Catalyst Calendar", "Earnings", "Macro Board",
-                        "Launches", "News Flow", "💬 Stocktwits cashtag"])
+    cal_sub = st.tabs([
+        "Catalyst Calendar", "Earnings", "Macro Board",
+        "Launches", "News Flow", "💬 Stocktwits cashtag",
+        "🤖 Transcript LLM", "📡 Live news",
+    ])
 
     universe_for_cal = (
         portfolio.universe_keys if portfolio is not None
@@ -1212,6 +1222,93 @@ with tabs[6]:
             st.dataframe(feed[display_cols].head(20), use_container_width=True, hide_index=True)
         else:
             st.info(f"Aucun post Stocktwits récent pour ${focus_ticker}.")
+
+    # --- Sub-tab 6 — LLM transcript summariser (Feature #14) ---------------
+    with cal_sub[6]:
+        st.markdown("### Earnings transcript summariser (Claude)")
+        st.caption(
+            "Paste a raw earnings call transcript — the LLM extracts beats, misses, "
+            "guidance direction, sentiment and 3 key management quotes. "
+            "Requires `ANTHROPIC_API_KEY` in `.env`. Results cached 24h per ticker+transcript."
+        )
+        col_l1, col_l2 = st.columns([1, 3])
+        llm_ticker = col_l1.selectbox(
+            "Ticker", universe_for_cal, key="llm_transcript_ticker",
+        )
+        col_l1.caption("Model: ANTHROPIC_MODEL env (default claude-sonnet-4-5)")
+        transcript_text = col_l2.text_area(
+            "Paste transcript", height=240,
+            placeholder="Paste the full earnings call transcript here (min 100 chars).",
+            key="llm_transcript_text",
+        )
+        if st.button("▶ Summarise", key="llm_transcript_btn"):
+            if not transcript_text or len(transcript_text.strip()) < 100:
+                st.warning("Transcript too short (need ≥100 chars).")
+            else:
+                try:
+                    with st.spinner("Calling Claude…"):
+                        out = llm_summarise_transcript(transcript_text, llm_ticker)
+                    st.success("Done.")
+                    cols = st.columns(3)
+                    cols[0].metric("Sentiment",
+                                    f"{float(out.get('sentiment', 0.0)):+.2f}")
+                    cols[1].metric("Guidance", str(out.get("guidance", "—"))[:40])
+                    cols[2].metric("Beats / Misses",
+                                    f"{len(out.get('beats', []))} / {len(out.get('misses', []))}")
+                    st.markdown("##### Bottom line")
+                    st.write(out.get("summary", ""))
+                    if out.get("beats"):
+                        st.markdown("##### Beats")
+                        for b in out["beats"]:
+                            st.markdown(f"- ✅ {b}")
+                    if out.get("misses"):
+                        st.markdown("##### Misses")
+                        for m in out["misses"]:
+                            st.markdown(f"- ⚠️ {m}")
+                    if out.get("key_quotes"):
+                        st.markdown("##### Key quotes")
+                        for q in out["key_quotes"]:
+                            st.markdown(f"> {q}")
+                except Exception as exc:
+                    st.warning(f"LLM summariser failed: {exc}")
+
+    # --- Sub-tab 7 — Real-time news (Feature #15) --------------------------
+    with cal_sub[7]:
+        st.markdown("### Real-time news ingest + alert push")
+        st.caption(
+            "Polls Google News RSS per ticker (lookback ≤24h), scores sentiment, and "
+            "fires an Alert when the cohort net sentiment crosses thresholds "
+            "(default bearish ≤ -0.4, bullish ≥ +0.5). Already-seen headlines are "
+            "remembered between refreshes (state in `data/alerts/news_realtime_seen.json`)."
+        )
+        col_r1, col_r2, col_r3 = st.columns([1, 1, 2])
+        rt_lookback = col_r1.slider("Lookback (heures)", 1, 24, 6, 1,
+                                      key="rt_news_lookback")
+        rt_bear = col_r2.slider("Bearish threshold", -1.0, 0.0, -0.4, 0.05,
+                                  key="rt_news_bear")
+        rt_bull = col_r3.slider("Bullish threshold", 0.0, 1.0, 0.5, 0.05,
+                                  key="rt_news_bull")
+        if st.button("▶ Refresh now", key="rt_news_btn"):
+            try:
+                with st.spinner("Polling RSS feeds…"):
+                    fresh = refresh_realtime(
+                        universe_for_cal,
+                        lookback_hours=int(rt_lookback),
+                        bearish_threshold=float(rt_bear),
+                        bullish_threshold=float(rt_bull),
+                        dispatch=True,
+                    )
+                if fresh.empty:
+                    st.info("Aucune nouvelle headline depuis la dernière passe.")
+                else:
+                    st.success(f"{len(fresh)} fresh headlines · "
+                               f"net sentiment = {fresh['sentiment'].mean():+.2f}")
+                    show_cols = [c for c in ["ts", "ticker", "title", "sentiment",
+                                              "source", "link"] if c in fresh.columns]
+                    st.dataframe(fresh[show_cols], use_container_width=True,
+                                  hide_index=True)
+            except Exception as exc:
+                st.warning(f"Real-time news refresh failed: {exc}")
 
 
 # ============================================================================
