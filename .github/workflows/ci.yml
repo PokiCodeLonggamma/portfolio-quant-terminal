@@ -100,7 +100,7 @@ jobs:
           pytest -q --no-header --tb=short --cov=src --cov-report=term-missing
       - name: Upload coverage (3.12 only)
         if: matrix.python-version == '3.12'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: quant_terminal/.coverage
