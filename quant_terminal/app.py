@@ -354,6 +354,47 @@ with st.sidebar:
     else:
         st.markdown(status_pill_html("idle", "idle"), unsafe_allow_html=True)
 
+    # --- 6. Bookmarks (pinned tickers) ----------------------------------
+    st.markdown(
+        "<div style='font-size:0.7rem;color:var(--qt-fg-dim);"
+        "text-transform:uppercase;letter-spacing:0.12em;font-weight:700;"
+        "margin-bottom:6px;margin-top:18px;'>Bookmarks</div>",
+        unsafe_allow_html=True,
+    )
+    try:
+        from src.watchlist.bookmarks import load_bookmarks, save_bookmarks
+        _bookmarks = load_bookmarks()
+    except Exception:
+        _bookmarks = []
+    if _bookmarks:
+        chips = "".join(
+            f"<span style='display:inline-block;margin:2px 4px 2px 0;"
+            f"padding:3px 9px;border-radius:999px;background:var(--qt-card);"
+            f"border:1px solid var(--qt-border);color:var(--qt-fg);"
+            f"font-family:var(--qt-font-mono);font-size:0.72rem;'>"
+            f"⭐ {t}</span>"
+            for t in _bookmarks
+        )
+        st.markdown(
+            f"<div style='line-height:1.9;margin-bottom:6px;'>{chips}</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("No bookmarks yet.")
+    with st.expander("Edit", expanded=False):
+        bm_text = st.text_area(
+            "Tickers (one per line)", value="\n".join(_bookmarks), height=120,
+            key="sidebar_bookmarks_edit", label_visibility="collapsed",
+        )
+        if st.button("💾 Save", key="sidebar_bookmarks_save", use_container_width=True):
+            new = [line.strip() for line in bm_text.splitlines() if line.strip()]
+            try:
+                save_bookmarks(new)
+                st.success(f"Saved {len(new)} bookmarks.")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"Save failed: {exc}")
+
     # --- Footer: build info ---------------------------------------------
     st.markdown(
         """
@@ -457,6 +498,7 @@ tabs = st.tabs([
     "🔥 Short Squeeze",
     "🌀 HMM Regime",
     "🤖 Kalman",
+    "☀️ Daily Brief",
 ])
 
 
@@ -642,6 +684,8 @@ with tabs[1]:
         "IV Analytics",
         "Trade Ticket",
         "Journal",
+        "📡 Live Book",
+        "💥 IV Crush",
         "Squeeze Score",
         "🌐 Surveillance Trading",
     ])
@@ -736,7 +780,7 @@ with tabs[1]:
             st.info("Pas de chaîne — IV analytics indisponibles.")
         else:
             spot = _resolve_spot(ticker)
-            iv_sub = st.tabs(["Term structure", "Vol smile", "RV vs IV"])
+            iv_sub = st.tabs(["Term structure", "Vol smile", "RV vs IV", "🧊 Vol Surface 3D"])
             with iv_sub[0]:
                 term = iv_term_structure(contracts, spot)
                 if term.empty:
@@ -810,10 +854,44 @@ with tabs[1]:
                         help="Positive = vol expensive vs realised. Negative = cheap.",
                     )
 
+            with iv_sub[3]:
+                try:
+                    from src.trading.vol_surface import render_vol_surface
+                    render_vol_surface(contracts, spot, ticker)
+                except Exception as exc:
+                    st.warning(f"Vol surface unavailable: {exc}")
+
     with trading_sub[4]:
         net_ev = portfolio.total_value_eur + float(getattr(portfolio, "cash_eur", 0.0) or 0.0) if portfolio else 10_000.0
         if portfolio is None:
             st.caption("Pas de DEGIRO chargé — debit cap calculé sur un EV fictif de 10 000 EUR.")
+
+        # Regime-conditional sizing nudge (read-only — pulls from the cached HMM)
+        try:
+            from src.regime.hmm import fit_volatility_hmm
+            from src.regime.sizing import render_regime_sizing_pill
+
+            @st.cache_data(show_spinner=False, ttl=60 * 30)
+            def _quick_hmm_for_ticket(_ticker: str = "SPY"):
+                import numpy as np
+                import yfinance as yf
+                hist = yf.download(_ticker, period="600d", progress=False,
+                                    auto_adjust=True, threads=False)
+                if hist is None or hist.empty:
+                    return None
+                if isinstance(hist.columns, pd.MultiIndex):
+                    hist.columns = hist.columns.get_level_values(0)
+                close = hist["Close"].astype(float).dropna()
+                log_ret = np.log(close / close.shift(1)).dropna()
+                return fit_volatility_hmm(log_ret, n_states=3)
+
+            hmm_res = _quick_hmm_for_ticket("SPY")
+            # Baseline = 3% of NEV (typical Δ-25 single-leg sizing)
+            baseline = max(100.0, net_ev * 0.03)
+            render_regime_sizing_pill(hmm_res, baseline)
+        except Exception as _hmm_exc:
+            st.caption(f"Regime sizing nudge unavailable: {_hmm_exc}")
+
         render_trade_ticket_form(
             ticker=ticker,
             net_ev_eur=net_ev,
@@ -829,7 +907,127 @@ with tabs[1]:
         except Exception as exc:
             st.info(f"Journal vide ou erreur de lecture : {exc}")
 
+    # --- Sub-tab 6 — Live Options Book (mark-to-market + aggregate Greeks) ──
     with trading_sub[6]:
+        st.markdown("### 📡 Live options book")
+        st.caption(
+            "Refresh-able view of open positions. Aggregate Δ/Γ/Θ/Vega across the "
+            "whole book + per-position P&L, theta burn, days-to-expiry watchdog."
+        )
+        col_r, _ = st.columns([1, 4])
+        if col_r.button("↻ Refresh prices", key="live_book_refresh"):
+            try:
+                _chain.clear()
+            except Exception:
+                pass
+        try:
+            from src.trading.live_book import render_live_book
+            open_journal = journal_list_open()
+            render_live_book(open_journal, fetch_chain_fn=fetch_chain)
+        except Exception as exc:
+            st.warning(f"Live book unavailable: {exc}")
+
+    # --- Sub-tab 7 — IV Crush Forecaster ───────────────────────────────────
+    with trading_sub[7]:
+        st.markdown("### 💥 Earnings IV crush forecaster")
+        st.caption(
+            "Before entering a long call/put around earnings, project the post-event "
+            "value assuming IV crushes by X%. Outputs the breakeven spot move needed "
+            "to recover entry debit and whether the implied move covers it."
+        )
+        crush_ticker = st.selectbox(
+            "Underlying", trading_universe, key="ivcrush_ticker",
+        )
+        crush_contracts = _chain(crush_ticker)
+        if not crush_contracts:
+            st.info("Pas de chaîne disponible pour ce ticker.")
+        else:
+            crush_spot = _resolve_spot(crush_ticker)
+            # Pick an expiry then a strike from the chain
+            expiries = sorted({c.expiry for c in crush_contracts})
+            col_a, col_b, col_c, col_d = st.columns([1, 1, 1, 1])
+            pick_exp = col_a.selectbox("Expiry", expiries, key="ivcrush_exp")
+            same_exp = [c for c in crush_contracts if c.expiry == pick_exp]
+            right_str = col_b.radio("Right", ["CALL", "PUT"], horizontal=True,
+                                      key="ivcrush_right")
+            from src.common.schemas import OptionRight as _OR
+            right_enum = _OR.CALL if right_str == "CALL" else _OR.PUT
+            strikes = sorted({c.strike for c in same_exp if c.right == right_enum
+                              and c.iv is not None and c.iv > 0})
+            if not strikes:
+                st.info("No IV-bearing contracts for that side/expiry.")
+            else:
+                pick_strike = col_c.selectbox("Strike", strikes,
+                                                index=min(len(strikes)//2, len(strikes)-1),
+                                                key="ivcrush_strike")
+                crush_ratio = col_d.slider("Post-event IV / Pre IV", 0.20, 0.90, 0.55, 0.05,
+                                            key="ivcrush_ratio",
+                                            help="0.55 ≈ 45% crush (typical post-earnings)")
+                contract = next(
+                    (c for c in same_exp if c.strike == pick_strike and c.right == right_enum),
+                    None,
+                )
+                if contract is None or contract.iv is None or contract.mid is None:
+                    st.info("Selected contract has no usable IV or mid.")
+                else:
+                    from datetime import date as _date
+                    from src.trading.iv_crush import (
+                        crush_grid, crush_scenario, implied_move_pct,
+                    )
+                    dte_days = (pick_exp - _date.today()).days
+                    im_pct = implied_move_pct(contract.iv, dte_days)
+                    try:
+                        sc = crush_scenario(
+                            spot=crush_spot or pick_strike,
+                            strike=pick_strike,
+                            dte_days=dte_days,
+                            pre_iv=contract.iv,
+                            premium=contract.mid,
+                            right=right_enum,
+                            crush_ratio=crush_ratio,
+                            implied_move=im_pct,
+                        )
+                    except Exception as exc:
+                        st.warning(f"Scenario failed: {exc}")
+                    else:
+                        kpi = st.columns(5)
+                        kpi[0].metric("Pre IV", f"{sc.pre_iv * 100:.1f}%")
+                        kpi[1].metric("Post IV", f"{sc.post_iv * 100:.1f}%",
+                                       f"-{(1-sc.crush_ratio)*100:.0f}%")
+                        kpi[2].metric("Implied move (1σ)",
+                                       f"{(im_pct or 0)*100:+.2f}%")
+                        kpi[3].metric("Break-even move",
+                                       f"{sc.breakeven_move_pct * 100:+.2f}%")
+                        kpi[4].metric(
+                            "Survives implied move?",
+                            "✅ Yes" if sc.survives_implied_move else "❌ No",
+                        )
+                        st.markdown("##### Sensitivity grid (crush ratios)")
+                        grid = crush_grid(
+                            spot=crush_spot or pick_strike,
+                            strike=pick_strike, dte_days=dte_days,
+                            pre_iv=contract.iv, premium=contract.mid,
+                            right=right_enum,
+                        )
+                        gdf = pd.DataFrame([
+                            {
+                                "crush_ratio": f"{g.crush_ratio:.2f}",
+                                "post_iv_pct": round(g.post_iv * 100, 1),
+                                "post_premium_no_move": round(g.post_premium_no_move, 3),
+                                "breakeven_spot": round(g.breakeven_spot, 2),
+                                "breakeven_move_pct": round(g.breakeven_move_pct * 100, 2),
+                                "survives_im": "✅" if g.survives_implied_move else "❌",
+                            } for g in grid
+                        ])
+                        st.dataframe(gdf, use_container_width=True, hide_index=True)
+                        _spot_str = f"{crush_spot:.2f}" if crush_spot else "n/a"
+                        st.caption(
+                            f"Contract: {right_str} {pick_strike} @ {pick_exp.isoformat()} "
+                            f"(DTE {dte_days}) · spot {_spot_str} · "
+                            f"premium {contract.mid:.3f}"
+                        )
+
+    with trading_sub[8]:
         # Surface the live Finviz/SEC squeeze scan + the chain-derived score side-by-side
         st.markdown("### Squeeze scanner top candidates (Finviz + SEC SHO)")
         scan_df = squeeze_top_candidates()
@@ -859,8 +1057,8 @@ with tabs[1]:
         else:
             st.info("Pas de chaîne — score indisponible.")
 
-    # --- Sub-tab 7 — Surveillance Trading (futures + sector ETFs) -----------
-    with trading_sub[7]:
+    # --- Sub-tab 9 — Surveillance Trading (futures + sector ETFs) -----------
+    with trading_sub[9]:
         st.markdown("### Cross-asset trading board")
         st.caption(
             "Index futures · commodity futures · rates/FX · sector & thematic ETFs. "
@@ -1341,7 +1539,7 @@ with tabs[6]:
     cal_sub = st.tabs([
         "Catalyst Calendar", "Earnings", "Macro Board",
         "Launches", "News Flow", "💬 Stocktwits cashtag",
-        "🤖 Transcript LLM", "📡 Live news",
+        "🤖 Transcript LLM", "📡 Live news", "📈 Analyst ratings",
     ])
 
     universe_for_cal = (
@@ -1541,6 +1739,49 @@ with tabs[6]:
                                   hide_index=True)
             except Exception as exc:
                 st.warning(f"Real-time news refresh failed: {exc}")
+
+    # --- Sub-tab 8 — Analyst rating changes (FMP) ---------------------------
+    with cal_sub[8]:
+        st.markdown("### 📈 Analyst upgrades / downgrades")
+        st.caption(
+            "Latest rating changes from Wall Street firms — covers portfolio + "
+            "surveillance + watchlists. Requires `FMP_API_KEY`. Cached 12 h."
+        )
+        try:
+            from src.data.analyst_ratings import (
+                get_consensus_targets,
+                get_rating_changes_multi,
+                normalize_for_display,
+            )
+            from src.watchlist.surveillance import (
+                load_surveillance,
+                merge_with,
+            )
+            tk_pool = merge_with(
+                portfolio.universe_keys if portfolio is not None else [],
+                load_surveillance(),
+                universe_for_cal,
+            )[:25]
+            ar_col1, ar_col2 = st.columns([1, 2])
+            ar_lookback = ar_col1.slider("Lookback (days)", 7, 90, 30, 1,
+                                          key="ar_lookback")
+            if ar_col2.button("↻ Refresh ratings", key="ar_refresh"):
+                pass  # cached read; the slider change already triggers a rerun
+            ar_df = get_rating_changes_multi(tk_pool, lookback_days=int(ar_lookback))
+            if ar_df is None or ar_df.empty:
+                st.info("No rating changes (or `FMP_API_KEY` not set).")
+            else:
+                st.markdown(f"##### {len(ar_df)} rating actions across {len(tk_pool)} tickers")
+                st.dataframe(normalize_for_display(ar_df),
+                              use_container_width=True, hide_index=True)
+                with st.expander("Consensus targets across the universe"):
+                    ct = get_consensus_targets(tk_pool[:15])
+                    if ct.empty:
+                        st.caption("No targets available.")
+                    else:
+                        st.dataframe(ct, use_container_width=True, hide_index=True)
+        except Exception as exc:
+            st.warning(f"Analyst feed unavailable: {exc}")
 
 
 # ============================================================================
@@ -2208,11 +2449,118 @@ with tabs[14]:
 
 
 # ============================================================================
+# TAB 15 — DAILY AI BRIEF (Anthropic-powered morning summary)
+# ============================================================================
+with tabs[15]:
+    st.markdown(
+        section_header_html(
+            "Daily Brief",
+            icon="☀️",
+            subtitle="LLM-generated morning summary — book status, today's catalysts, "
+                     "news pulse, regime, recommended actions. Cached 1 h.",
+        ),
+        unsafe_allow_html=True,
+    )
+    col_b1, col_b2 = st.columns([1, 4])
+    if col_b1.button("↻ Regenerate brief", key="brief_regen"):
+        # Best-effort cache wipe — directly unlink the brief namespace files.
+        try:
+            from src.utils.config import get_config
+            _brief_dir = get_config().cache_dir / "daily_brief"
+            if _brief_dir.exists():
+                for _f in _brief_dir.glob("*.parquet"):
+                    try:
+                        _f.unlink()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    try:
+        from src.news.daily_brief import assemble_context, generate_brief
+        from src.news.realtime import refresh_realtime
+
+        # Pull all the context pieces (use already-fetched stuff in memory where possible)
+        try:
+            _open = journal_list_open()
+        except Exception:
+            _open = pd.DataFrame()
+        # Light-touch HMM read — re-use the cached fit if available
+        _regime_label, _regime_probs = None, None
+        try:
+            from src.regime.hmm import fit_volatility_hmm
+            import numpy as np
+            import yfinance as _yf
+            _hist = _yf.download("SPY", period="600d", progress=False,
+                                  auto_adjust=True, threads=False)
+            if _hist is not None and not _hist.empty:
+                if isinstance(_hist.columns, pd.MultiIndex):
+                    _hist.columns = _hist.columns.get_level_values(0)
+                _lr = np.log(_hist["Close"] / _hist["Close"].shift(1)).dropna()
+                _hres = fit_volatility_hmm(_lr, n_states=3)
+                _regime_label = _hres.current_label
+                _regime_probs = _hres.current_probs
+        except Exception:
+            pass
+        # Catalysts: re-use the already-loaded macro_evs / earn_evs if portfolio loaded
+        _cat_today, _cat_week = [], []
+        try:
+            from datetime import timedelta as _td
+            _today = datetime.utcnow().date()
+            _evs_all = list(globals().get("macro_evs", []) or []) + \
+                       list(globals().get("earn_evs", []) or []) + \
+                       list(globals().get("launch_evs", []) or [])
+            for ev in _evs_all:
+                ts = getattr(ev, "ts", None) or getattr(ev, "date", None)
+                if ts is None:
+                    continue
+                d = ts.date() if hasattr(ts, "date") else ts
+                if d == _today:
+                    _cat_today.append({
+                        "ticker": getattr(ev, "ticker", ""),
+                        "title": getattr(ev, "title", "") or getattr(ev, "name", ""),
+                        "event_type": getattr(ev, "event_type", ""),
+                    })
+                elif _today < d <= _today + _td(days=7):
+                    _cat_week.append({
+                        "ticker": getattr(ev, "ticker", ""),
+                        "title": getattr(ev, "title", "") or getattr(ev, "name", ""),
+                        "event_type": getattr(ev, "event_type", ""),
+                    })
+        except Exception:
+            pass
+
+        # News last 24h — light pull
+        try:
+            _news_pool = (portfolio.universe_keys if portfolio is not None else [])[:8]
+            _news24 = refresh_realtime(_news_pool, lookback_hours=24, dispatch=False)
+        except Exception:
+            _news24 = pd.DataFrame()
+
+        ctx = assemble_context(
+            open_positions_df=_open,
+            portfolio_nav_eur=portfolio.total_value_eur if portfolio is not None else None,
+            portfolio_pnl_eur=float(pnl_eur.iloc[-1]) if not pnl_eur.empty else None,
+            catalysts_today=_cat_today,
+            catalysts_week=_cat_week,
+            news_24h_df=_news24,
+            regime_label=_regime_label,
+            regime_probs=_regime_probs,
+        )
+        with st.spinner("Generating brief…"):
+            brief_md = generate_brief(ctx)
+        st.markdown(brief_md)
+        with st.expander("Raw context fed to the LLM"):
+            st.json(ctx)
+    except Exception as exc:
+        st.warning(f"Daily Brief unavailable: {exc}")
+
+
+# ============================================================================
 # Footer
 # ============================================================================
 st.markdown(
     f"<div style='margin-top:2rem;color:{PALETTE.fg_muted};font-size:0.75rem;text-align:center;'>"
-    "Quant Terminal · Alpaca + yfinance · FX EUR · Lightweight-charts · 8 tabs (Wave 2: Decision + Catalysts coming)"
+    "Quant Terminal · Alpaca + yfinance · FX EUR · 16 tabs · Daily Brief · HMM · Live Book · IV Crush"
     "</div>",
     unsafe_allow_html=True,
 )
