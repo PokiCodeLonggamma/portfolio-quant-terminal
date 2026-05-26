@@ -580,13 +580,26 @@ with tabs[1]:
             st.dataframe(df_scan.head(20), use_container_width=True, hide_index=True)
             st.caption(f"{len(df_scan)} tickers scanned · asof {df_scan['asof'].iloc[0]}")
 
+    # Shared spot resolver across trading sub-tabs: local panel → yfinance fallback.
+    def _resolve_spot(t: str) -> float:
+        if not prices_eur.empty and t in prices_eur.columns:
+            s = prices_eur[t].dropna()
+            if not s.empty:
+                return float(s.iloc[-1])
+        try:
+            from src.trading.options_chain import _safe_spot as _ss
+            v = _ss(t)
+            if v and v > 0:
+                return float(v)
+        except Exception:
+            pass
+        return 0.0
+
     with trading_sub[1]:
         if not contracts:
             st.info("Aucune chaîne d'options disponible (Alpaca + yfinance ont échoué).")
         else:
-            spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
-                not prices_eur.empty and ticker in prices_eur.columns
-            ) else 0.0
+            spot = _resolve_spot(ticker)
             render_chain_explorer(contracts, underlying=ticker, spot=spot, highlight_delta=0.25)
 
     # --- Sub-tab 2 — GEX + enrichments --------------------------------------
@@ -594,9 +607,7 @@ with tabs[1]:
         if not contracts:
             st.info("Pas de chaîne — GEX indisponible.")
         else:
-            spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
-                not prices_eur.empty and ticker in prices_eur.columns
-            ) else 0.0
+            spot = _resolve_spot(ticker)
             try:
                 gex_df = compute_gex(contracts, spot)
                 from src.trading.gex import gamma_flip_strike
@@ -625,9 +636,7 @@ with tabs[1]:
         if not contracts:
             st.info("Pas de chaîne — IV analytics indisponibles.")
         else:
-            spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
-                not prices_eur.empty and ticker in prices_eur.columns
-            ) else 0.0
+            spot = _resolve_spot(ticker)
             iv_sub = st.tabs(["Term structure", "Vol smile", "RV vs IV"])
             with iv_sub[0]:
                 term = iv_term_structure(contracts, spot)
@@ -667,10 +676,26 @@ with tabs[1]:
                     st.plotly_chart(fig, use_container_width=True)
 
             with iv_sub[2]:
-                if prices_eur.empty or ticker not in prices_eur.columns:
+                close = None
+                if not prices_eur.empty and ticker in prices_eur.columns:
+                    close = prices_eur[ticker].dropna()
+                if close is None or close.empty:
+                    # yfinance fallback for tickers not in the local panel
+                    try:
+                        import yfinance as yf
+                        cfg = get_config()
+                        yf_sym = cfg.yfinance_symbol(ticker) or ticker
+                        hist = yf.download(yf_sym, period="120d", progress=False,
+                                            auto_adjust=True, threads=False)
+                        if hist is not None and not hist.empty:
+                            if isinstance(hist.columns, pd.MultiIndex):
+                                hist.columns = hist.columns.get_level_values(0)
+                            close = hist["Close"].astype(float).dropna()
+                    except Exception:
+                        close = None
+                if close is None or close.empty:
                     st.info("Pas de série de prix pour calculer la RV.")
                 else:
-                    close = prices_eur[ticker].dropna()
                     term = iv_term_structure(contracts, spot)
                     atm_iv = float(term["atm_iv_avg"].dropna().iloc[0]) if (
                         not term.empty and not term["atm_iv_avg"].dropna().empty
@@ -721,9 +746,7 @@ with tabs[1]:
         if contracts:
             try:
                 from src.trading.squeeze_score import compute_squeeze_score
-                spot = float(prices_eur[ticker].dropna().iloc[-1]) if (
-                    not prices_eur.empty and ticker in prices_eur.columns
-                ) else 0.0
+                spot = _resolve_spot(ticker)
                 score = compute_squeeze_score(contracts, spot=spot)
                 # Add the ticker as a column so render_squeeze_board can display it
                 if score is not None:
