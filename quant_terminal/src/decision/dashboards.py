@@ -78,6 +78,22 @@ def render_conviction_matrix(scores_df: pd.DataFrame) -> None:
         "Composite is a weighted mean (1-5). Each axis: 5 = best.  "
         "Suggested weights use Kelly/4 capped at max_single_position_pct."
     )
+    # Explain WHY axes are low — most of the time it's missing data, not a
+    # genuine weak score. The rationale column already says e.g.
+    # "no journal entry" / "no liquidity data" / "no catalyst on calendar".
+    with st.expander("ℹ️ What feeds each axis (and how to boost a low score)"):
+        st.markdown(
+            """
+            | Axis            | Data source                     | How to lift a low score |
+            |-----------------|---------------------------------|--------------------------|
+            | **thesis**      | `src.decision.journal_store`    | Add a thesis entry from **Decision Support → Thesis Journal** |
+            | **downside**    | dilution + runway risk          | Verify SEC filings via **Smart-Money → Dilution / Cash runway** |
+            | **liquidity**   | ADV + spread + borrow           | Loads automatically; needs an Alpaca chain / yfinance volume |
+            | **catalyst**    | events on the next ~30 days     | Wait for one or import via **Catalysts → Catalyst Calendar** |
+
+            A score of **1** with rationale `no X` usually means the data source returned empty — not that the position scored poorly. Fill the missing input and the axis lifts.
+            """
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +322,36 @@ def render_rerating_dashboard(rerating_rows: pd.DataFrame) -> None:
 def render_hedge_cost(collar: CollarQuote | None, alt_suggestions: list[dict[str, Any]] | None) -> None:
     st.subheader("Hedge cost")
     if collar is None:
-        st.warning("No collar quote available — chain unavailable or fetch failed.")
+        # Better diagnostic — most common causes spelled out so the user knows
+        # where to look (chain unavailable vs. expiry too thin vs. ticker
+        # without options listed).
+        st.markdown(
+            f"""
+            <div style="background:{PALETTE.card};border:1px solid {PALETTE.warning}55;
+                        border-left:4px solid {PALETTE.warning};border-radius:10px;
+                        padding:14px 16px;margin-bottom:10px;">
+                <div style="font-weight:600;color:{PALETTE.warning};
+                            font-size:0.95rem;">⚠ Collar quote unavailable</div>
+                <div style="margin-top:6px;font-size:0.85rem;color:{PALETTE.fg};
+                            line-height:1.55;">
+                    The collar pricer needs an OTM put + OTM call at the same expiry, on a
+                    chain with usable mid prices. Common causes:
+                </div>
+                <ul style="margin-top:6px;font-size:0.82rem;color:{PALETTE.fg_muted};
+                            padding-left:20px;line-height:1.6;">
+                    <li>Underlying has no options listed (small-cap, foreign ETF on .L/.PA exchanges)</li>
+                    <li>Alpaca returned a chain without OI/quotes → yfinance fallback failed</li>
+                    <li>Target tenor (90d default) has no liquid strikes at the requested OTM %</li>
+                    <li>The ticker symbol used here differs from the option underlying on Alpaca</li>
+                </ul>
+                <div style="margin-top:6px;font-size:0.82rem;color:{PALETTE.fg_dim};">
+                    See the linear alternatives below for vanilla / future-based hedges
+                    when the option market is too thin.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Underlying", _fmt_eur(collar.underlying_px_eur, ))
@@ -336,4 +381,22 @@ def render_hedge_cost(collar: CollarQuote | None, alt_suggestions: list[dict[str
         df_alt = pd.DataFrame(alt_suggestions)
         st.dataframe(df_alt, use_container_width=True, hide_index=True)
     elif collar is None:
-        st.info("No linear alternatives configured for this ticker either.")
+        st.markdown(
+            f"""
+            <div style="background:{PALETTE.card};border:1px dashed {PALETTE.border_strong};
+                        border-radius:10px;padding:14px 16px;margin-top:6px;">
+                <div style="font-weight:600;color:{PALETTE.fg};">
+                    No linear alternative mapped for this ticker
+                </div>
+                <div style="font-size:0.82rem;color:{PALETTE.fg_muted};margin-top:6px;
+                            line-height:1.5;">
+                    Add this ticker's hedge basket under
+                    <code style="color:{PALETTE.accent_alt};">
+                    config/hedge_defaults.yaml → linear_alternatives</code>.
+                    The repo ships defaults for SPY · QQQ · GOOG · AAPL · TSLA · CCJ · IONQ ·
+                    ASTS · RKLB · RDW · AAOI · QS · ONDS — extend with your own.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
