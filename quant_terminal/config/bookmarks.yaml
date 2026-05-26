@@ -1,0 +1,9 @@
+# Pinned tickers — appear in the sidebar for one-click access.
+# Edit via the sidebar UI (Settings → Bookmarks) or directly here.
+
+tickers:
+  - SPY
+  - QQQ
+  - ASTS
+  - RKLB
+  - IONQ
