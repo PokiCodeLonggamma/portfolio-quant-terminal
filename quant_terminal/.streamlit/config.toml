@@ -1,0 +1,24 @@
+# Streamlit runtime config — applied on every deployment.
+
+[server]
+headless = true
+runOnSave = false
+enableCORS = false
+enableXsrfProtection = true
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+# Match the dashboard palette (see src/viz/theme.py)
+base = "dark"
+primaryColor = "#22C55E"
+backgroundColor = "#0B0F14"
+secondaryBackgroundColor = "#101720"
+textColor = "#E8EDF2"
+font = "sans serif"
+
+[runner]
+fastReruns = true
+enforceSerializableSessionState = false

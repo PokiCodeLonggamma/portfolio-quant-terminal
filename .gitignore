@@ -12,5 +12,8 @@ quant_terminal/vendor/legacy_squeeze/**/__pycache__/
 # Squeeze scan persistence
 quant_terminal/data/squeeze/
 
+# Streamlit secrets (template is committed, real values never)
+quant_terminal/.streamlit/secrets.toml
+
 # Generative art experiments (kept locally, not part of the dashboard)
 generative_art/

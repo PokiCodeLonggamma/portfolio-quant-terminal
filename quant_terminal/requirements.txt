@@ -1,3 +1,7 @@
+# Streamlit Cloud deployment requirements
+# Mirrors quant_terminal/pyproject.toml [project].dependencies — keep in sync.
+# Streamlit Cloud installs this file from the same dir as the main file (app.py).
+
 pandas>=2.0
 numpy>=1.26
 scipy>=1.12
@@ -20,4 +24,11 @@ httpx>=0.27
 feedparser>=6.0
 streamlit-autorefresh>=1.0
 anthropic>=0.40
+
+# Vendored legacy short-squeeze scanner (vendor/legacy_squeeze/)
+beautifulsoup4>=4.12
+lxml>=5.0
+rich>=13.0
+
+# Dev / tests (kept for parity with editable install)
 pytest>=8.0
