@@ -1,0 +1,108 @@
+# =============================================================================
+# Quant Terminal — Continuous Integration
+# Triggers: every push to any branch + every pull request to main.
+# Jobs:
+#   lint           — ruff static analysis (fast, runs first)
+#   compile-sweep  — py_compile all source files (catches syntax-only breakage)
+#   tests          — pytest matrix on Python 3.11 + 3.12 with dep cache
+# =============================================================================
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+# Avoid stacked runs on the same branch.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install ruff
+        run: pip install --quiet ruff
+      - name: ruff check (errors only — F401/F811/F841/E711/E712)
+        working-directory: quant_terminal
+        run: |
+          ruff check src/ app.py tests/ \
+            --select F401,F811,F841,E711,E712 \
+            --output-format=github
+
+  # ---------------------------------------------------------------------------
+  compile-sweep:
+    name: Compile sweep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile every .py
+        working-directory: quant_terminal
+        run: |
+          python - <<'PY'
+          import pathlib, py_compile, sys
+          errs = []
+          for p in sorted(pathlib.Path('.').rglob('*.py')):
+              if '__pycache__' in str(p):
+                  continue
+              try:
+                  py_compile.compile(str(p), doraise=True)
+              except py_compile.PyCompileError as e:
+                  errs.append((str(p), str(e)))
+          print(f"compiled {sum(1 for _ in pathlib.Path('.').rglob('*.py'))} .py files")
+          if errs:
+              for path, msg in errs:
+                  print(f"::error file={path}::{msg[:300]}")
+              sys.exit(1)
+          PY
+
+  # ---------------------------------------------------------------------------
+  tests:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: quant_terminal/requirements.txt
+      - name: Install project (editable) + test deps
+        working-directory: quant_terminal
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest pytest-cov
+      - name: pytest
+        working-directory: quant_terminal
+        env:
+          # Sentinel env so any test that reads .env values gets safe defaults.
+          APCA_API_KEY_ID: ""
+          APCA_API_SECRET_KEY: ""
+          SEC_EMAIL: "ci@example.com"
+        run: |
+          pytest -q --no-header --tb=short --cov=src --cov-report=term-missing
+      - name: Upload coverage (3.12 only)
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: quant_terminal/.coverage
+          retention-days: 7
+          if-no-files-found: ignore

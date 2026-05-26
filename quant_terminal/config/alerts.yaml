@@ -1,0 +1,108 @@
+# =============================================================================
+# Alerts config — declarative triggers + channels.
+# Secrets live in .env (DISCORD_WEBHOOK_URL, TELEGRAM_*, ALERT_SMTP_*).
+# Re-loaded each Streamlit refresh, so you can edit while the app is running.
+# =============================================================================
+
+triggers:
+  # ---- Portfolio-wide ------------------------------------------------------
+  - name: portfolio_drawdown_5pct
+    type: drawdown_threshold
+    enabled: true
+    severity: warning
+    cooldown_minutes: 240
+    channels: [streamlit, discord]
+    params:
+      threshold_pct: 0.05
+
+  - name: portfolio_drawdown_10pct
+    type: drawdown_threshold
+    enabled: true
+    severity: critical
+    cooldown_minutes: 240
+    channels: [streamlit, discord, email]
+    params:
+      threshold_pct: 0.10
+
+  # ---- Squeeze radar -------------------------------------------------------
+  - name: gamma_squeeze_alert
+    type: squeeze_score
+    enabled: true
+    severity: warning
+    cooldown_minutes: 60
+    channels: [streamlit, discord]
+    params:
+      threshold: 80
+
+  # ---- Catalyst proximity --------------------------------------------------
+  - name: catalysts_within_3d
+    type: catalyst_proximity
+    enabled: true
+    severity: info
+    cooldown_minutes: 720
+    channels: [streamlit, discord]
+    params:
+      window_days: 3
+      categories: ["earnings", "fomc", "opec", "cpi", "launch"]
+
+  - name: fomc_within_24h
+    type: catalyst_proximity
+    enabled: true
+    severity: warning
+    cooldown_minutes: 360
+    channels: [streamlit, discord]
+    params:
+      window_days: 1
+      categories: ["fomc", "cpi"]
+
+  # ---- Position-level dilution / runway ------------------------------------
+  - name: runway_under_2q
+    type: runway_low
+    enabled: true
+    severity: warning
+    cooldown_minutes: 1440
+    channels: [streamlit, discord]
+    params:
+      max_quarters: 2.0
+
+  - name: dilution_score_4plus
+    type: dilution_high
+    enabled: true
+    severity: warning
+    cooldown_minutes: 1440
+    channels: [streamlit, discord]
+    params:
+      min_score: 4
+
+  # ---- Thesis stop breach --------------------------------------------------
+  - name: thesis_stop_breach
+    type: journal_stop_breach
+    enabled: true
+    severity: critical
+    cooldown_minutes: 360
+    channels: [streamlit, discord, email]
+    params: {}
+
+  # ---- Example IV-rank trigger (disabled by default — set ticker first) ----
+  - name: example_iv_rank_asts_high
+    type: iv_rank
+    enabled: false
+    severity: warning
+    cooldown_minutes: 240
+    channels: [streamlit, discord]
+    params:
+      ticker: ASTS
+      threshold: 80
+      direction: above
+
+  # ---- Example price-breach trigger (disabled by default) -----------------
+  - name: example_price_breach_asts_below_50
+    type: price_breach
+    enabled: false
+    severity: warning
+    cooldown_minutes: 60
+    channels: [streamlit, discord]
+    params:
+      ticker: ASTS
+      direction: below
+      threshold_eur: 50.0

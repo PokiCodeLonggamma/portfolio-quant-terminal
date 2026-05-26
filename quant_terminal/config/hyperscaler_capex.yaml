@@ -1,0 +1,61 @@
+# =============================================================================
+# Hyperscaler quarterly CapEx (USD billions, reported figures from 10-Q / 8-K).
+# Update after each earnings season. Used by photonics / AI infra theses
+# (AAOI, LITE, COHR, FN, MRVL, ANET, IPGP).
+# =============================================================================
+
+quarters:
+  - quarter: "2024Q1"
+    msft: 14.0
+    meta:  6.7
+    goog: 12.0
+    amzn: 14.0
+    orcl:  2.0
+  - quarter: "2024Q2"
+    msft: 13.9
+    meta:  8.5
+    goog: 13.2
+    amzn: 16.4
+    orcl:  2.1
+  - quarter: "2024Q3"
+    msft: 14.9
+    meta:  9.2
+    goog: 13.1
+    amzn: 17.6
+    orcl:  2.3
+  - quarter: "2024Q4"
+    msft: 22.6
+    meta: 14.8
+    goog: 14.3
+    amzn: 27.8
+    orcl:  4.0
+  - quarter: "2025Q1"
+    msft: 21.4
+    meta: 13.7
+    goog: 17.2
+    amzn: 24.3
+    orcl:  4.4
+  - quarter: "2025Q2"
+    msft: 24.2
+    meta: 17.0
+    goog: 22.4
+    amzn: 31.4
+    orcl:  5.6
+  - quarter: "2025Q3"
+    msft: 30.0
+    meta: 19.4
+    goog: 25.1
+    amzn: 34.2
+    orcl:  6.2
+  - quarter: "2025Q4"
+    msft: 35.7
+    meta: 22.0
+    goog: 28.0
+    amzn: 38.4
+    orcl:  7.1
+  - quarter: "2026Q1"
+    msft: 38.1
+    meta: 24.5
+    goog: 30.8
+    amzn: 41.0
+    orcl:  8.0

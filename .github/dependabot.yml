@@ -1,0 +1,24 @@
+# =============================================================================
+# Dependabot — automated dependency PRs for pip + GitHub Actions.
+# =============================================================================
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/quant_terminal"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    labels: ["deps", "automated"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    labels: ["ci", "automated"]
+    commit-message:
+      prefix: "ci"

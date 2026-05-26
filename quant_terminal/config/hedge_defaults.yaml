@@ -1,0 +1,28 @@
+# ============================================================================
+# Defaults for src.decision.hedge_cost.
+#
+# - collar: default OTM offsets + tenor for compute_collar
+# - linear_alternatives: ticker -> list of {hedge, kind, rationale} fallbacks
+#   when the underlying option market is too thin (3x ETPs, commodities).
+# ============================================================================
+
+collar:
+  dte_days: 90
+  call_otm_pct: 0.15
+  put_otm_pct: 0.10
+
+linear_alternatives:
+  "3OIL.L":
+    - {hedge: USO,    kind: ETF,    rationale: "linear WTI exposure (1x)"}
+    - {hedge: CL=F,   kind: future, rationale: "WTI crude futures, no roll drag overnight"}
+    - {hedge: SCO,    kind: ETF,    rationale: "inverse WTI (-2x) for short bias"}
+  "3DES.L":
+    - {hedge: EXSA.DE, kind: ETF,    rationale: "linear DAX exposure"}
+    - {hedge: FDAX,    kind: future, rationale: "DAX index future (Eurex)"}
+    - {hedge: DAXX.L,  kind: ETF,    rationale: "iShares Core DAX UCITS"}
+  "3USL.L":
+    - {hedge: SPY,     kind: ETF,    rationale: "S&P 500 linear ETF"}
+    - {hedge: "ES=F",  kind: future, rationale: "S&P 500 E-mini future"}
+  "3LGO.L":
+    - {hedge: GLD,     kind: ETF,    rationale: "linear gold ETF"}
+    - {hedge: "GC=F",  kind: future, rationale: "gold futures"}

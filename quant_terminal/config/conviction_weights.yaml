@@ -1,0 +1,6 @@
+# Weights of the four axes of the conviction score (composite = sum w_i * x_i).
+# Values are re-normalised at load time so they don't need to sum to 1.
+thesis_quality: 0.30
+downside: 0.25
+liquidity: 0.20
+catalyst_proximity: 0.25

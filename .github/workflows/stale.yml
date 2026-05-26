@@ -1,0 +1,27 @@
+# =============================================================================
+# Auto-stale issues / PRs after 60 days of inactivity. Soft hygiene.
+# =============================================================================
+name: Mark stale issues and PRs
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-message: "This issue has been idle for 60 days. Closing in 14 days unless updated."
+          stale-pr-message: "This PR has been idle for 60 days. Closing in 14 days unless updated."
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          exempt-issue-labels: "pinned,security"
+          exempt-pr-labels: "pinned,security"

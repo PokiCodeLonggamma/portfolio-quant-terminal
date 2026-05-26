@@ -1,0 +1,87 @@
+# ============================================================================
+# Private / Pre-IPO watchlist — valuations are approximations rounded to
+# one decimal usd_b and dates rounded to month. Refresh manually.
+# Source: docs/PHASE1_PLAN.md section 5 (copied verbatim).
+# ============================================================================
+
+private:
+  SpaceX:
+    sub_theme: Launch_Constellation
+    latest_valuation_usd_b: 350.0
+    last_round_date: 2025-12-01
+    last_round_type: "Secondary tender"
+    lead_investor: "Multiple (tender)"
+    listed_proxies: ["RKLB", "ASTS", "BKSY", "RDW", "ARKX"]
+    notes: "Use ARKX + RKLB + ASTS as listed proxy basket."
+
+  PsiQuantum:
+    sub_theme: Photonics_Quantum
+    latest_valuation_usd_b: 6.0
+    last_round_date: 2024-09-01
+    last_round_type: "Series E"
+    lead_investor: "BlackRock"
+    listed_proxies: ["IONQ", "RGTI", "QUBT", "QTUM"]
+
+  Pasqal:
+    sub_theme: Neutral_Atom_Quantum
+    latest_valuation_usd_b: 0.5
+    last_round_date: 2024-01-01
+    last_round_type: "Series B"
+    lead_investor: "Temasek"
+    listed_proxies: ["IONQ", "QTUM"]
+
+  Helion:
+    sub_theme: Fusion
+    latest_valuation_usd_b: 5.4
+    last_round_date: 2025-01-01
+    last_round_type: "Series F"
+    lead_investor: "Sam Altman / Lightspeed"
+    listed_proxies: ["CCJ", "BWXT"]
+
+  Vast:
+    sub_theme: Space_Station
+    latest_valuation_usd_b: 1.0
+    last_round_date: 2024-06-01
+    last_round_type: "Series A extension"
+    lead_investor: "Founder-led / strategic"
+    listed_proxies: ["RKLB", "RDW"]
+
+  Astranis:
+    sub_theme: Satellites
+    latest_valuation_usd_b: 1.6
+    last_round_date: 2024-03-01
+    last_round_type: "Series D"
+    lead_investor: "Andreessen Horowitz"
+    listed_proxies: ["ASTS", "BKSY", "RKLB"]
+
+  Stoke_Space:
+    sub_theme: Launch
+    latest_valuation_usd_b: 0.5
+    last_round_date: 2025-04-01
+    last_round_type: "Series C"
+    lead_investor: "Industry Ventures"
+    listed_proxies: ["RKLB"]
+
+  IQM:
+    sub_theme: Superconducting_Quantum
+    latest_valuation_usd_b: 0.4
+    last_round_date: 2024-03-01
+    last_round_type: "Series A2"
+    lead_investor: "World Fund / Tencent"
+    listed_proxies: ["IONQ", "RGTI", "QTUM"]
+
+  Quantinuum:
+    sub_theme: Trapped_Ion_Quantum
+    latest_valuation_usd_b: 5.0
+    last_round_date: 2025-01-01
+    last_round_type: "Series B"
+    lead_investor: "JPMorgan / Honeywell"
+    listed_proxies: ["HON", "IONQ", "QTUM"]
+
+  Atom_Computing:
+    sub_theme: Neutral_Atom_Quantum
+    latest_valuation_usd_b: 0.3
+    last_round_date: 2024-01-01
+    last_round_type: "Series B"
+    lead_investor: "Third Point Ventures"
+    listed_proxies: ["IONQ", "QTUM"]

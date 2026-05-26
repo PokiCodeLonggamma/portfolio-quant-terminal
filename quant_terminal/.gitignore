@@ -33,6 +33,13 @@ data/processed/*
 !data/processed/.gitkeep
 data/cache/*
 !data/cache/.gitkeep
+data/snapshots/
+data/tax/
+data/journal/
+data/alerts/
+data/execution/
+data/trading_journal/
+data/kalman_artefacts/
 logs/*
 !logs/.gitkeep
 

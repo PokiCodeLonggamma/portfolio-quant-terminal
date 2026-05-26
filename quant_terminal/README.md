@@ -1,5 +1,8 @@
 # Quant Terminal
 
+[![CI](https://github.com/PokiCodeLonggamma/portfolio-quant-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/PokiCodeLonggamma/portfolio-quant-terminal/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/PokiCodeLonggamma/portfolio-quant-terminal/actions/workflows/codeql.yml/badge.svg)](https://github.com/PokiCodeLonggamma/portfolio-quant-terminal/actions/workflows/codeql.yml)
+
 Terminal quant institutionnel multi-modules. Trois piliers :
 
 1. **Portfolio Analytics** -- ingestion DEGIRO, prix Alpaca (+ fallback yfinance), conversion FX live, VaR/CVaR, stress tests, factor exposures, lightweight-charts.

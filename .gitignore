@@ -4,3 +4,16 @@ ui_ux_skill/
 
 # Claude Code local-machine settings
 .claude/
+
+# Vendored legacy short-squeeze scanner — DB and exports are runtime artefacts
+quant_terminal/vendor/legacy_squeeze/data/
+quant_terminal/vendor/legacy_squeeze/**/__pycache__/
+
+# Squeeze scan persistence
+quant_terminal/data/squeeze/
+
+# Streamlit secrets (template is committed, real values never)
+quant_terminal/.streamlit/secrets.toml
+
+# Generative art experiments (kept locally, not part of the dashboard)
+generative_art/

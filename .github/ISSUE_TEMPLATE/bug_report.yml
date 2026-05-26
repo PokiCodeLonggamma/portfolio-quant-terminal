@@ -1,0 +1,48 @@
+name: 🐛 Bug report
+description: Report a runtime error or unexpected behaviour
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      placeholder: "When I clicked X in tab Y, I got error Z…"
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Full traceback (if any)
+      render: shell
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Affected tab
+      options:
+        - 📈 Portfolio
+        - 🎯 Trading Bench
+        - 🛰️ Watchlists
+        - 🌐 Macro & Regime
+        - 💸 Smart-Money & Fundamentals
+        - 🧠 Decision Support
+        - 📅 Catalysts & News
+        - 🎬 Event Trading
+        - 📒 Backtest
+        - 🔔 Alerts
+        - 📡 Execution
+        - 📊 Snapshot & Tax
+        - 🔥 Short Squeeze
+        - 🤖 Kalman
+        - Sidebar / general
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.11.7"
+  - type: checkboxes
+    id: mode
+    attributes:
+      label: Execution mode (if relevant)
+      options:
+        - label: Paper mode
+        - label: Live mode (orders affect real account)
