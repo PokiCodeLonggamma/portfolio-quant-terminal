@@ -70,7 +70,18 @@ def _scan_one(
     spot_lookup: dict[str, float],
 ) -> ScanResult | None:
     spot = spot_lookup.get(ticker)
-    if spot is None:
+    # Fallback: when the loaded portfolio's prices_eur doesn't cover this
+    # ticker (e.g. SPY/QQQ scanned without DEGIRO upload), pull spot from
+    # yfinance fast_info via the chain helper. Without this fallback the
+    # scanner returns nothing on Streamlit Cloud cold-starts.
+    if spot is None or spot <= 0:
+        try:
+            from src.trading.options_chain import _safe_spot
+            spot = _safe_spot(ticker)
+        except Exception as exc:
+            log.debug("scanner: %s spot fallback failed: %s", ticker, exc)
+            return None
+    if spot is None or spot <= 0:
         return None
     try:
         chain = fetch_chain_fn(ticker)

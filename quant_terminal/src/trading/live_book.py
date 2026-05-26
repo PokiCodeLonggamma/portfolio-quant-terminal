@@ -362,7 +362,32 @@ def render_live_book(
 ) -> None:
     """Full live-book panel — KPIs + aggregate Greeks + per-position cards."""
     if open_df is None or open_df.empty:
-        st.info("No open positions in the journal — open one from **Trade Ticket** first.")
+        st.markdown(
+            f"""
+            <div style='text-align:center;padding:48px 24px;background:{PALETTE.card};
+                        border:1px dashed {PALETTE.border_strong};border-radius:14px;
+                        margin:18px 0;'>
+                <div style='font-size:3rem;opacity:0.5;margin-bottom:12px;'>📭</div>
+                <div style='font-weight:600;font-size:1.1rem;color:{PALETTE.fg};'>
+                    No open positions yet
+                </div>
+                <div style='font-size:0.85rem;color:{PALETTE.fg_dim};margin-top:8px;
+                            max-width:480px;margin-left:auto;margin-right:auto;
+                            line-height:1.5;'>
+                    The Live Book aggregates marked-to-market Greeks and theta-burn for
+                    every open option trade in your journal.<br><br>
+                    Head to <strong>Trade Ticket</strong> (this same Trading Bench tab)
+                    to record a position — it will appear here in real time.
+                </div>
+                <div style='margin-top:14px;font-family:{PALETTE.fg_muted!s};
+                            font-family:monospace;font-size:0.72rem;color:{PALETTE.fg_dim};'>
+                    Note: Streamlit Cloud resets the journal on every container restart;
+                    consider local-only or external persistence for production tracking.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         return
     with st.spinner("Pulling live chains..."):
         enriched, summary = aggregate_book_greeks(open_df, fetch_chain_fn)

@@ -12,9 +12,10 @@ collar:
   put_otm_pct: 0.10
 
 linear_alternatives:
+  # ── Leveraged London ETFs ─────────────────────────────────────────────
   "3OIL.L":
     - {hedge: USO,    kind: ETF,    rationale: "linear WTI exposure (1x)"}
-    - {hedge: CL=F,   kind: future, rationale: "WTI crude futures, no roll drag overnight"}
+    - {hedge: "CL=F", kind: future, rationale: "WTI crude futures, no roll drag overnight"}
     - {hedge: SCO,    kind: ETF,    rationale: "inverse WTI (-2x) for short bias"}
   "3DES.L":
     - {hedge: EXSA.DE, kind: ETF,    rationale: "linear DAX exposure"}
@@ -26,3 +27,77 @@ linear_alternatives:
   "3LGO.L":
     - {hedge: GLD,     kind: ETF,    rationale: "linear gold ETF"}
     - {hedge: "GC=F",  kind: future, rationale: "gold futures"}
+
+  # ── Space / new-space single names ────────────────────────────────────
+  ASTS:
+    - {hedge: ARKX,  kind: ETF, rationale: "ARK Space Exploration — diversified space basket"}
+    - {hedge: ITA,   kind: ETF, rationale: "iShares US Aerospace & Defense"}
+    - {hedge: QQQ,   kind: ETF, rationale: "broad Nasdaq-100 as systematic-risk hedge"}
+  RKLB:
+    - {hedge: ARKX,  kind: ETF, rationale: "diversified space exposure"}
+    - {hedge: ITA,   kind: ETF, rationale: "aerospace & defense basket"}
+    - {hedge: SMH,   kind: ETF, rationale: "semis (high beta to risk-on regime)"}
+  RDW:
+    - {hedge: ARKX,  kind: ETF, rationale: "space basket diversification"}
+    - {hedge: ITA,   kind: ETF, rationale: "aerospace & defense"}
+  BKSY:
+    - {hedge: ARKX,  kind: ETF, rationale: "space + satellite imagery basket"}
+
+  # ── Quantum / compute single names ────────────────────────────────────
+  IONQ:
+    - {hedge: QTUM,  kind: ETF, rationale: "Defiance Quantum ETF (diversified)"}
+    - {hedge: QQQ,   kind: ETF, rationale: "high-beta tech proxy"}
+  QS:
+    - {hedge: QQQ,   kind: ETF, rationale: "long-duration tech proxy"}
+    - {hedge: ARKK,  kind: ETF, rationale: "innovation basket"}
+
+  # ── Uranium / SMR thesis ──────────────────────────────────────────────
+  CCJ:
+    - {hedge: URA,   kind: ETF, rationale: "Global X Uranium ETF"}
+    - {hedge: URNM,  kind: ETF, rationale: "Sprott Uranium Miners"}
+  BWXT:
+    - {hedge: ITA,   kind: ETF, rationale: "aerospace & defense"}
+    - {hedge: URA,   kind: ETF, rationale: "uranium SMR exposure"}
+
+  # ── AI / optical / photonics single names ─────────────────────────────
+  AAOI:
+    - {hedge: SMH,   kind: ETF, rationale: "semis — high correlation"}
+    - {hedge: SOXX,  kind: ETF, rationale: "iShares Semiconductor"}
+  ONDS:
+    - {hedge: QQQ,   kind: ETF, rationale: "broad tech proxy"}
+
+  # ── Mega caps ─────────────────────────────────────────────────────────
+  GOOG:
+    - {hedge: QQQ,   kind: ETF, rationale: "Nasdaq-100 (Google is ~5% weight)"}
+    - {hedge: SPY,   kind: ETF, rationale: "broad-market hedge"}
+  AAPL:
+    - {hedge: QQQ,   kind: ETF, rationale: "Nasdaq-100 (Apple is ~9% weight)"}
+    - {hedge: SPY,   kind: ETF, rationale: "broad-market hedge"}
+  TSLA:
+    - {hedge: QQQ,   kind: ETF, rationale: "Nasdaq-100 (Tesla weight)"}
+    - {hedge: ARKK,  kind: ETF, rationale: "ARK Innovation — high overlap"}
+
+  # ── Generic sector & broad ETFs (use SPY as macro hedge) ──────────────
+  XLE:
+    - {hedge: "CL=F", kind: future, rationale: "WTI crude — primary energy driver"}
+    - {hedge: USO,    kind: ETF,    rationale: "linear WTI proxy"}
+  XLF:
+    - {hedge: "ZN=F", kind: future, rationale: "10Y note futures (rate-sensitive)"}
+    - {hedge: SPY,    kind: ETF,    rationale: "broad-market hedge"}
+  QQQ:
+    - {hedge: "NQ=F", kind: future, rationale: "Nasdaq-100 E-mini future"}
+    - {hedge: SPY,    kind: ETF,    rationale: "broader market proxy"}
+  SPY:
+    - {hedge: "ES=F", kind: future, rationale: "S&P 500 E-mini future"}
+    - {hedge: VOO,    kind: ETF,    rationale: "Vanguard S&P 500"}
+  ARKX:
+    - {hedge: ITA,   kind: ETF, rationale: "aerospace & defense alt"}
+    - {hedge: QQQ,   kind: ETF, rationale: "broad tech proxy"}
+  QTUM:
+    - {hedge: SMH,   kind: ETF, rationale: "semis hedge"}
+    - {hedge: QQQ,   kind: ETF, rationale: "broad tech proxy"}
+  URA:
+    - {hedge: URNM,  kind: ETF, rationale: "Sprott Uranium Miners"}
+  GDX:
+    - {hedge: GLD,   kind: ETF, rationale: "linear gold spot"}
+    - {hedge: "GC=F", kind: future, rationale: "gold futures"}
