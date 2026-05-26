@@ -1,0 +1,67 @@
+# Trading watchlist — futures + sector ETFs
+# -----------------------------------------
+# Used by the Trading Bench → "Surveillance Trading" sub-tab to display a
+# quick cross-asset board (level, change, RSI). Edit freely.
+
+groups:
+  index_futures:
+    label: "Index futures"
+    tickers:
+      - { symbol: "ES=F",  name: "S&P 500 E-mini" }
+      - { symbol: "NQ=F",  name: "Nasdaq-100 E-mini" }
+      - { symbol: "YM=F",  name: "Dow Jones E-mini" }
+      - { symbol: "RTY=F", name: "Russell 2000 E-mini" }
+      - { symbol: "VX=F",  name: "VIX futures" }
+
+  commodity_futures:
+    label: "Commodity futures"
+    tickers:
+      - { symbol: "CL=F",  name: "WTI Crude" }
+      - { symbol: "NG=F",  name: "Natural Gas" }
+      - { symbol: "GC=F",  name: "Gold" }
+      - { symbol: "SI=F",  name: "Silver" }
+      - { symbol: "HG=F",  name: "Copper" }
+
+  rates_fx:
+    label: "Rates & FX"
+    tickers:
+      - { symbol: "^TNX",  name: "US 10Y yield" }
+      - { symbol: "^FVX",  name: "US 5Y yield" }
+      - { symbol: "DX=F",  name: "US Dollar Index" }
+      - { symbol: "EURUSD=X", name: "EUR/USD" }
+
+  sector_etfs:
+    label: "Sector ETFs (SPDR Select)"
+    tickers:
+      - { symbol: "XLK",  name: "Technology" }
+      - { symbol: "XLF",  name: "Financials" }
+      - { symbol: "XLE",  name: "Energy" }
+      - { symbol: "XLV",  name: "Health Care" }
+      - { symbol: "XLI",  name: "Industrials" }
+      - { symbol: "XLY",  name: "Consumer Discretionary" }
+      - { symbol: "XLP",  name: "Consumer Staples" }
+      - { symbol: "XLB",  name: "Materials" }
+      - { symbol: "XLU",  name: "Utilities" }
+      - { symbol: "XLRE", name: "Real Estate" }
+      - { symbol: "XLC",  name: "Communication Services" }
+
+  thematic_etfs:
+    label: "Thematic ETFs"
+    tickers:
+      - { symbol: "SMH",  name: "Semiconductors" }
+      - { symbol: "SOXX", name: "Semiconductors (alt)" }
+      - { symbol: "URA",  name: "Uranium" }
+      - { symbol: "ARKK", name: "ARK Innovation" }
+      - { symbol: "ARKX", name: "ARK Space Exploration" }
+      - { symbol: "QTUM", name: "Quantum Computing" }
+      - { symbol: "GDX",  name: "Gold Miners" }
+      - { symbol: "ITA",  name: "Aerospace & Defense" }
+
+  benchmarks:
+    label: "Broad benchmarks"
+    tickers:
+      - { symbol: "SPY",  name: "S&P 500 ETF" }
+      - { symbol: "QQQ",  name: "Nasdaq-100 ETF" }
+      - { symbol: "IWM",  name: "Russell 2000 ETF" }
+      - { symbol: "DIA",  name: "Dow Jones ETF" }
+      - { symbol: "^VIX", name: "VIX index" }

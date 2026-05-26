@@ -1,0 +1,18 @@
+# Surveillance watchlist
+# ----------------------
+# Tickers to monitor alongside the portfolio (Stocktwits cashtag, news,
+# real-time sentiment). Edit freely — the Streamlit UI also exposes an editor
+# under the Watchlists tab.
+#
+# One ticker per entry. Comments allowed.
+
+tickers:
+  - NVDA      # AI bellwether
+  - AMD       # Datacenter / GPU
+  - MSTR      # BTC proxy
+  - COIN      # Crypto proxy
+  - GME       # Meme-flow indicator
+  - AMC       # Meme-flow indicator
+  - PLTR      # Govtech
+  - SOFI      # Fintech sentiment
+  - HOOD      # Retail-flow indicator

@@ -1,0 +1,86 @@
+name: 🔍 Short Squeeze Scanner
+
+on:
+  # ── Déclenchement manuel depuis GitHub (mobile ou desktop) ──
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode de scan"
+        required: true
+        default: "full"
+        type: choice
+        options:
+          - full
+          - ticker
+          - analyze-scan
+      ticker:
+        description: "Ticker (uniquement si mode = ticker)"
+        required: false
+        default: ""
+        type: string
+
+  # ── Scan quotidien automatique — 18h30 EST = 23h30 UTC ──
+  schedule:
+    - cron: "30 23 * * 1-5"  # Lundi-Vendredi
+
+jobs:
+  scan:
+    name: "📊 Scan ${{ github.event.inputs.mode || 'scheduled' }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+          pip install numpy
+
+      - name: 🗄️ Restore database cache
+        uses: actions/cache@v4
+        with:
+          path: data/scanner.db
+          key: scanner-db-${{ github.run_number }}
+          restore-keys: |
+            scanner-db-
+
+      - name: 🔍 Run scan
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          MODE="${{ github.event.inputs.mode || 'full' }}"
+          TICKER="${{ github.event.inputs.ticker }}"
+
+          if [ "$MODE" = "ticker" ] && [ -n "$TICKER" ]; then
+            echo "🔍 Scanning + AI analysis: $TICKER"
+            python -m src.main --ticker "$TICKER" -v
+          elif [ "$MODE" = "analyze-scan" ]; then
+            echo "🤖 AI analysis on last scan results"
+            python -m src.main --analyze-scan -v
+          else
+            echo "🔍 Running full scan (no AI)"
+            python -m src.main -v
+          fi
+
+      - name: 📤 Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-results-${{ github.run_number }}
+          path: |
+            data/scan_*.txt
+            data/scanner.db
+          retention-days: 30

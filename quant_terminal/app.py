@@ -545,6 +545,7 @@ with tabs[1]:
         "Trade Ticket",
         "Journal",
         "Squeeze Score",
+        "🌐 Surveillance Trading",
     ])
 
     # --- Sub-tab 0 — Universe Scanner ---------------------------------------
@@ -760,6 +761,40 @@ with tabs[1]:
         else:
             st.info("Pas de chaîne — score indisponible.")
 
+    # --- Sub-tab 7 — Surveillance Trading (futures + sector ETFs) -----------
+    with trading_sub[7]:
+        st.markdown("### Cross-asset trading board")
+        st.caption(
+            "Index futures · commodity futures · rates/FX · sector & thematic ETFs. "
+            "Edit the config at `config/trading_watchlist.yaml`."
+        )
+        from src.watchlist.trading_board import trading_board
+
+        @st.cache_data(show_spinner="Loading trading board…", ttl=60 * 5)
+        def _trading_board():
+            return trading_board()
+
+        col_btn, _ = st.columns([1, 4])
+        if col_btn.button("↻ Refresh", key="trading_board_refresh"):
+            _trading_board.clear()
+        tb_df = _trading_board()
+        if tb_df.empty:
+            st.info("No trading watchlist data — yfinance unreachable or YAML empty.")
+        else:
+            # Per-group display
+            for grp_label in tb_df["group"].unique():
+                sub = tb_df[tb_df["group"] == grp_label].copy()
+                st.markdown(f"##### {grp_label}")
+                sub["chg_%"] = (sub["chg_pct"] * 100).round(2)
+                sub["range_pos_20d"] = (sub["range_pos_20d"] * 100).round(1)
+                sub["rsi14"] = sub["rsi14"].round(1)
+                display_cols = ["symbol", "name", "level", "chg_%", "rsi14",
+                                "range_pos_20d", "asof"]
+                st.dataframe(
+                    sub[[c for c in display_cols if c in sub.columns]],
+                    use_container_width=True, hide_index=True,
+                )
+
 
 # ============================================================================
 # TAB 2 — WATCHLISTS (Cluster 6)
@@ -801,6 +836,29 @@ with tabs[2]:
         )
     except Exception as exc:
         st.error(f"Watchlists indisponibles : {exc}")
+
+    # ── Surveillance editor (free-form ticker monitor) ─────────────────────
+    st.markdown("---")
+    st.subheader("🕵️ Surveillance watchlist (free-form)")
+    st.caption(
+        "Tickers monitored alongside the portfolio for Stocktwits cashtag + news. "
+        "One ticker per line. Saved to `config/surveillance.yaml`."
+    )
+    from src.watchlist.surveillance import load_surveillance, save_surveillance
+    current = load_surveillance()
+    txt = st.text_area(
+        "Tickers (one per line)",
+        value="\n".join(current),
+        height=180,
+        key="surveillance_editor",
+    )
+    col_s1, col_s2, _ = st.columns([1, 1, 4])
+    if col_s1.button("💾 Save surveillance", key="surv_save"):
+        new_list = [line.strip() for line in txt.splitlines() if line.strip()]
+        save_surveillance(new_list)
+        st.success(f"Saved {len(new_list)} tickers.")
+    if col_s2.button("↩ Reload", key="surv_reload"):
+        st.rerun()
 
 
 # ============================================================================
@@ -1218,10 +1276,23 @@ with tabs[6]:
     with cal_sub[5]:
         st.markdown("### Cashtag posts (Stocktwits free API)")
         st.caption(
-            "Free alternative to paid Twitter/X API. Rate-limited ~200 req / 30 min — "
-            "results cached 5 minutes."
+            "Surveillance + portfolio coverage. Free alternative to paid X API, "
+            "rate-limited ~200 req / 30 min — results cached 5 minutes."
         )
-        twit_universe = universe_for_cal[:8]
+        # Universe = portfolio tickers ∪ surveillance watchlist
+        try:
+            from src.watchlist.surveillance import load_surveillance, merge_with
+            surv = load_surveillance()
+        except Exception:
+            surv = []
+        portfolio_keys = portfolio.universe_keys if portfolio is not None else []
+        twit_universe = merge_with(portfolio_keys, surv) if (portfolio_keys or surv) else universe_for_cal[:8]
+        if not twit_universe:
+            twit_universe = universe_for_cal[:8]
+        st.caption(
+            f"Coverage : {len(portfolio_keys)} portefeuille + {len(surv)} surveillance · "
+            f"total {len(twit_universe)} tickers"
+        )
         col_t1, col_t2 = st.columns([1, 3])
         focus_ticker = col_t1.selectbox("Focus ticker", twit_universe, key="stwits_focus")
         try:
@@ -1655,33 +1726,145 @@ with tabs[11]:
 # ============================================================================
 with tabs[12]:
     st.title("🔥 Short Squeeze Scanner")
-    st.caption("Combine SEC EDGAR (Form SHO threshold list) + Finviz screener → squeeze score.")
+    st.caption(
+        "Two engines : (1) quick SEC SHO + Finviz threshold screen · "
+        "(2) **Legacy 4-pillar deep scan** (Finviz scrape + EDGAR 13F + options "
+        "flow + 6 technical signals)."
+    )
 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        run_scan = st.button("▶ Lancer un scan", use_container_width=True, key="squeeze_btn_v2")
-    with col_b:
-        st.metric("SEC_EMAIL", "configuré" if get_config().secrets.sec_email else "manquant")
+    sq_sub = st.tabs(["⚡ Quick scan (SHO + Finviz)", "🏛️ Legacy 4-pillar deep scan"])
 
-    if run_scan:
-        with st.spinner("Fetching Finviz…"):
-            finviz = fetch_finviz_short_interest()
-        with st.spinner("Fetching SEC SHO list…"):
-            sho = fetch_sec_form_sho()
-        if finviz.empty:
-            st.warning("Finviz n'a rien retourné — vérifier la connectivité ou bloquage UA.")
+    # ── Sub-tab 0 — existing quick scan ────────────────────────────────────
+    with sq_sub[0]:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            run_scan = st.button("▶ Lancer un scan", use_container_width=True, key="squeeze_btn_v2")
+        with col_b:
+            st.metric("SEC_EMAIL", "configuré" if get_config().secrets.sec_email else "manquant")
+
+        if run_scan:
+            with st.spinner("Fetching Finviz…"):
+                finviz = fetch_finviz_short_interest()
+            with st.spinner("Fetching SEC SHO list…"):
+                sho = fetch_sec_form_sho()
+            if finviz.empty:
+                st.warning("Finviz n'a rien retourné — vérifier la connectivité ou bloquage UA.")
+            else:
+                merged = merge_signals(finviz, sho)
+                try:
+                    squeeze_persist_scan(merged)
+                except Exception:
+                    pass
+                st.subheader(f"Top candidats ({len(merged)} tickers)")
+                st.dataframe(merged.head(50), use_container_width=True, hide_index=True)
+                st.caption(
+                    "✔ Scan persisté — surfaceé automatiquement dans `🎯 Trading Bench › Squeeze Score`."
+                )
+
+    # ── Sub-tab 1 — Legacy 4-pillar deep scan ──────────────────────────────
+    with sq_sub[1]:
+        st.markdown("### Legacy 4-pillar scoring engine")
+        st.caption(
+            "Pillar 1: VAD (SI%, DTC, borrow, util)  ·  Pillar 2: Institutional (Inst Trans, 13F δ, "
+            "Call OI Δ, P/C ratio, unusual)  ·  Pillar 3: Divergence  ·  Pillar 4: Technical "
+            "(TTM squeeze, OBV div, Keltner breakout, vol spike, RSI shift, VWAP reclaim)."
+        )
+        from src.scanners.legacy_pipeline import (
+            legacy_available,
+            legacy_run_full_scan,
+            legacy_scan_single_ticker,
+            legacy_scan_universe,
+        )
+        if not legacy_available():
+            st.error("Vendor mirror missing under `quant_terminal/vendor/legacy_squeeze/`.")
         else:
-            merged = merge_signals(finviz, sho)
-            # Persist so the Trading Bench Squeeze sub-tab + Alerts can read it
-            try:
-                squeeze_persist_scan(merged)
-            except Exception:
-                pass
-            st.subheader(f"Top candidats ({len(merged)} tickers)")
-            st.dataframe(merged.head(50), use_container_width=True, hide_index=True)
-            st.caption(
-                "✔ Scan persisté — surfaceé automatiquement dans `🎯 Trading Bench › Squeeze Score`."
+            mode_col, _ = st.columns([2, 3])
+            mode = mode_col.radio(
+                "Mode",
+                ["Single ticker", "From a list", "Full Finviz screen (slow, 3-8 min)"],
+                horizontal=False,
+                key="legacy_mode",
             )
+
+            results: pd.DataFrame | None = None
+
+            if mode == "Single ticker":
+                tk_col, btn_col = st.columns([2, 1])
+                tkin = tk_col.text_input("Ticker", value="HIMS",
+                                          key="legacy_single_ticker").strip().upper()
+                if btn_col.button("▶ Scan", key="legacy_single_btn") and tkin:
+                    with st.spinner(f"Scoring {tkin}…"):
+                        row = legacy_scan_single_ticker(tkin)
+                    if row is None:
+                        st.warning("Legacy scan returned nothing.")
+                    else:
+                        results = pd.DataFrame([row])
+
+            elif mode == "From a list":
+                portfolio_keys = portfolio.universe_keys if portfolio is not None else []
+                try:
+                    from src.watchlist.surveillance import load_surveillance, merge_with
+                    universe = merge_with(portfolio_keys, load_surveillance())
+                except Exception:
+                    universe = list(portfolio_keys)
+                default_text = "\n".join(universe[:15]) if universe else "HIMS\nBYND\nGME"
+                txt = st.text_area(
+                    "Tickers (one per line) — defaults to portfolio + surveillance",
+                    value=default_text, height=140, key="legacy_list_text",
+                )
+                if st.button("▶ Scan list", key="legacy_list_btn"):
+                    tickers = [t.strip().upper() for t in txt.splitlines() if t.strip()]
+                    if not tickers:
+                        st.warning("Empty list.")
+                    else:
+                        with st.spinner(f"Scoring {len(tickers)} tickers (~30s each)…"):
+                            results = legacy_scan_universe(tickers)
+
+            else:
+                st.warning(
+                    "⚠ Full Finviz screen scrapes ~30 tickers × 30s each. "
+                    "Telegram/LLM features are disabled by default — only scoring runs."
+                )
+                if st.button("▶ Run full scan", key="legacy_full_btn"):
+                    with st.spinner("Running full Finviz-screened scan (this is slow)…"):
+                        results = legacy_run_full_scan()
+
+            if results is not None and not results.empty:
+                st.markdown(f"##### {len(results)} ticker(s) scored")
+                summary_cols = [
+                    "ticker", "signal", "score_total", "score_fundamental",
+                    "score_technical_bonus", "pillar1_vad", "pillar2_inst",
+                    "pillar3_div", "pillar4_tech", "squeeze_phase",
+                    "short_float", "days_to_cover", "inst_trans", "price",
+                    "market_cap", "sector",
+                ]
+                show = results[[c for c in summary_cols if c in results.columns]].copy()
+                for pct_col in ("short_float", "inst_trans"):
+                    if pct_col in show.columns:
+                        show[pct_col] = (show[pct_col] * 100).round(2)
+                if "market_cap" in show.columns:
+                    show["market_cap_M$"] = (show["market_cap"] / 1e6).round(0)
+                    show = show.drop(columns=["market_cap"])
+                st.dataframe(show, use_container_width=True, hide_index=True)
+
+                # Drill-down per ticker
+                st.markdown("##### Pillar drill-down")
+                pick = st.selectbox("Ticker", results["ticker"].tolist(), key="legacy_drilldown")
+                row = results[results["ticker"] == pick].iloc[0]
+                pcols = st.columns(4)
+                pcols[0].metric("P1 — VAD",          f"{row['pillar1_vad']:.1f} / 4")
+                pcols[1].metric("P2 — Institutional", f"{row['pillar2_inst']:.1f} / 4")
+                pcols[2].metric("P3 — Divergence",    f"{row['pillar3_div']:.1f} / 2")
+                pcols[3].metric("P4 — Technical",     f"{row['pillar4_tech']:.1f} / 3")
+                for n, key in [("Pillar 1 — VAD", "pillar1_details"),
+                               ("Pillar 2 — Institutional", "pillar2_details"),
+                               ("Pillar 3 — Divergence", "pillar3_details"),
+                               ("Pillar 4 — Technical", "pillar4_details")]:
+                    d = row.get(key) or {}
+                    if d:
+                        st.markdown(f"**{n}**")
+                        for k, v in d.items():
+                            st.markdown(f"- `{k}` — {v}")
 
 
 # ============================================================================
