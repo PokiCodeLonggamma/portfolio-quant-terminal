@@ -106,3 +106,58 @@ def merge_signals(finviz: pd.DataFrame, sho: pd.DataFrame | None = None) -> pd.D
             df.loc[df["on_sho"], "squeeze_score"] = df.loc[df["on_sho"], "squeeze_score"] + 0.1
 
     return df.sort_values("squeeze_score", ascending=False)
+
+
+# ---------------------------------------------------------------------------
+# Persistence + integration helpers
+# ---------------------------------------------------------------------------
+def _store_path():
+    from src.utils.config import PROJECT_ROOT
+    p = PROJECT_ROOT / "data" / "squeeze"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def persist_scan(df: pd.DataFrame) -> None:
+    """Save the latest scan to disk so it can be reused across tabs / alerts."""
+    if df is None or df.empty:
+        return
+    path = _store_path() / "latest.parquet"
+    try:
+        df.to_parquet(path, index=False)
+    except Exception as exc:
+        log.warning("squeeze persist failed: %s", exc)
+
+
+def latest_scan() -> pd.DataFrame:
+    """Load the last persisted scan (empty DF if none)."""
+    path = _store_path() / "latest.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_parquet(path)
+    except Exception:
+        return pd.DataFrame()
+
+
+def top_candidates(df: pd.DataFrame | None = None, *, n: int = 10,
+                    min_score: float = 0.6) -> pd.DataFrame:
+    """Return the top-N tickers above `min_score`. Uses persisted scan if df is None."""
+    if df is None or df.empty:
+        df = latest_scan()
+    if df.empty or "squeeze_score" not in df.columns:
+        return pd.DataFrame()
+    return df[df["squeeze_score"] >= min_score].head(n).reset_index(drop=True)
+
+
+def ticker_squeeze_score(ticker: str) -> float | None:
+    """Lookup the squeeze score for one ticker from the persisted scan."""
+    df = latest_scan()
+    if df.empty:
+        return None
+    tk = ticker.upper()
+    sym_col = next((c for c in df.columns if c.lower() in {"ticker", "symbol"}), df.columns[0])
+    row = df[df[sym_col].astype(str).str.upper() == tk]
+    if row.empty or "squeeze_score" not in row.columns:
+        return None
+    return float(row["squeeze_score"].iloc[0])

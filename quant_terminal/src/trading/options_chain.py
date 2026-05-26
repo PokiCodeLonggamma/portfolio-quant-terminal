@@ -24,6 +24,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from typing import Any
 
+import math
+
 import pandas as pd
 
 from src.common.schemas import OptionContract, OptionRight
@@ -38,6 +40,25 @@ log = get_logger(__name__)
 _CACHE_TTL_SECONDS = 30 * 60          # 30 minutes
 _CACHE_NS = "options_chain"
 _RISK_FREE = 0.04                     # used by BS inverse on yfinance fallback
+
+# Data-quality threshold: if Alpaca returns a chain but more than this share
+# of contracts lack BOTH a usable mid AND a delta, we treat the chain as
+# corrupted and fall back to yfinance.
+_ALPACA_QUALITY_THRESHOLD = 0.7
+
+
+def _nan_to_none(v: Any) -> Any:
+    """Coerce float NaN/inf to None so pydantic + parquet round-trips stay clean."""
+    if v is None:
+        return None
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    try:
+        if pd.isna(v):
+            return None
+    except (TypeError, ValueError):
+        pass
+    return v
 
 
 # ---------------------------------------------------------------------------
@@ -67,12 +88,32 @@ def _to_record(c: OptionContract) -> dict[str, Any]:
 
 
 def _from_record(rec: dict[str, Any]) -> OptionContract:
-    rec = dict(rec)
+    rec = {k: _nan_to_none(v) for k, v in rec.items()}
     rec["expiry"] = date.fromisoformat(str(rec["expiry"]))
     rec["snapshot_ts"] = datetime.fromisoformat(str(rec["snapshot_ts"]))
     if isinstance(rec.get("right"), str):
         rec["right"] = OptionRight(rec["right"])
+    # Optional integer-ish fields: pydantic refuses None-> int but we want None
+    for opt_int in ("open_interest", "volume"):
+        if rec.get(opt_int) is not None:
+            try:
+                rec[opt_int] = int(rec[opt_int])
+            except (TypeError, ValueError):
+                rec[opt_int] = None
     return OptionContract(**rec)
+
+
+def _quality_ok(contracts: list[OptionContract]) -> bool:
+    """Heuristic: at least 30% of contracts must have a usable price+greek."""
+    if not contracts:
+        return False
+    usable = sum(
+        1 for c in contracts
+        if (c.mid is not None or c.last is not None or c.bid is not None)
+        and c.delta is not None
+    )
+    ratio = usable / len(contracts)
+    return ratio >= (1.0 - _ALPACA_QUALITY_THRESHOLD)
 
 
 def _in_dte_window(expiry: date, window: tuple[int, int]) -> bool:
@@ -263,9 +304,17 @@ def fetch_chain(
             log.warning("cache deserialize failed for %s: %s", cache_key, exc)
 
     contracts = _fetch_alpaca(underlying, expiry, target_dte_window)
-    if not contracts:
+    # If Alpaca returned junk (no greeks, no prices for most contracts — common
+    # on illiquid small-caps like ASTS / IONQ paper data), retry via yfinance
+    # and merge greeks via BS-inverse.
+    if not contracts or not _quality_ok(contracts):
+        if contracts:
+            log.info("Alpaca chain for %s low-quality (%d contracts) → yfinance fallback",
+                     underlying, len(contracts))
         spot = _safe_spot(underlying)
-        contracts = _fetch_yfinance(underlying, expiry, target_dte_window, spot)
+        yf_contracts = _fetch_yfinance(underlying, expiry, target_dte_window, spot)
+        if yf_contracts:
+            contracts = yf_contracts
 
     if contracts:
         try:

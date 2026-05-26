@@ -157,7 +157,9 @@ def close_trade(
     debit = float(df.loc[mask, "debit_eur"].iloc[0])
     qty = int(df.loc[mask, "qty"].iloc[0])
     pnl = (float(exit_credit_eur) - debit) * qty
-    df.loc[mask, "closed_ts"] = pd.Timestamp(closed_ts)
+    # Floor to ms — the closed_ts column is typed datetime64[ms] (set on first
+    # write); pandas rejects microsecond-precision assignment as a lossy cast.
+    df.loc[mask, "closed_ts"] = pd.Timestamp(closed_ts).floor("ms")
     df.loc[mask, "exit_credit_eur"] = float(exit_credit_eur)
     df.loc[mask, "pnl_eur"] = pnl
     _save_df(df)
