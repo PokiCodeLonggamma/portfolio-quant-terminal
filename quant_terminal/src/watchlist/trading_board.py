@@ -1,9 +1,11 @@
 """Trading watchlist — futures + sector ETFs cross-asset board.
 
 Reads ``config/trading_watchlist.yaml`` and produces a flat DataFrame with
-level, daily change and a couple of light technicals (RSI-14, 20d range
-position). yfinance is the only data source — falls back gracefully when
-quotes are unavailable.
+level, daily change, RSI-14, 20d range position, and a tiny sparkline series
+(last 30 closes) for inline visualisation.
+
+yfinance is the only data source — falls back gracefully when quotes are
+unavailable.
 """
 from __future__ import annotations
 
@@ -39,7 +41,6 @@ def _rsi14(close: pd.Series) -> float | None:
     delta = close.diff().dropna()
     up = delta.clip(lower=0.0)
     dn = -delta.clip(upper=0.0)
-    # Wilder's smoothing approximation via EMA
     avg_up = up.ewm(alpha=1 / 14, adjust=False).mean()
     avg_dn = dn.ewm(alpha=1 / 14, adjust=False).mean()
     rs = avg_up.iloc[-1] / (avg_dn.iloc[-1] + 1e-12)
@@ -56,6 +57,43 @@ def _range_pos20(close: pd.Series) -> float | None:
     if hi - lo <= 0:
         return None
     return (last - lo) / (hi - lo)
+
+
+def _ema(series: pd.Series, span: int) -> pd.Series:
+    return series.ewm(span=span, adjust=False).mean()
+
+
+def _trend_pct(close: pd.Series) -> float | None:
+    """5d/20d EMA spread in % of price — directional bias signal."""
+    if close is None or len(close) < 25:
+        return None
+    e5 = _ema(close, 5).iloc[-1]
+    e20 = _ema(close, 20).iloc[-1]
+    last = float(close.iloc[-1])
+    if last <= 0:
+        return None
+    return float((e5 - e20) / last)
+
+
+def _atr_pct(hist: pd.DataFrame) -> float | None:
+    """ATR-14 / price — normalised volatility for cross-asset comparison."""
+    if hist is None or len(hist) < 20:
+        return None
+    for col in ("High", "Low", "Close"):
+        if col not in hist.columns:
+            return None
+    hi, lo, cl = hist["High"], hist["Low"], hist["Close"]
+    prev_cl = cl.shift(1)
+    tr = pd.concat([
+        (hi - lo),
+        (hi - prev_cl).abs(),
+        (lo - prev_cl).abs(),
+    ], axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1 / 14, adjust=False).mean().iloc[-1]
+    last = float(cl.iloc[-1])
+    if last <= 0 or pd.isna(atr):
+        return None
+    return float(atr / last)
 
 
 def _one_symbol(sym: str, name: str, group_label: str) -> dict | None:
@@ -81,6 +119,8 @@ def _one_symbol(sym: str, name: str, group_label: str) -> dict | None:
     last = float(close.iloc[-1])
     prev = float(close.iloc[-2]) if len(close) >= 2 else last
     chg_pct = (last - prev) / prev if prev > 0 else 0.0
+    # Sparkline payload — last 30 closes (or what we have)
+    spark = close.tail(30).tolist()
     return {
         "group": group_label,
         "symbol": sym,
@@ -90,6 +130,9 @@ def _one_symbol(sym: str, name: str, group_label: str) -> dict | None:
         "chg_pct": chg_pct,
         "rsi14": _rsi14(close),
         "range_pos_20d": _range_pos20(close),
+        "trend_pct": _trend_pct(close),
+        "atr_pct": _atr_pct(hist),
+        "spark": spark,                              # list[float] for inline charts
         "asof": str(close.index[-1].date()),
     }
 

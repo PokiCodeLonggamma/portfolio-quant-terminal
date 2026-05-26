@@ -316,6 +316,168 @@ def _fetch_yfinance(
 
 
 # ---------------------------------------------------------------------------
+# OI merger
+# ===========
+# Alpaca's Data-API `OptionsSnapshot` does NOT expose `open_interest` (only
+# greeks + IV + quote/trade). When Alpaca powers our chain we end up with 0 OI
+# for every contract, which silently kills GEX / max-pain / P/C-ratio.
+#
+# Resolution order, Alpaca-first per user preference:
+#   1. **Alpaca Trading-API** `GET /v2/options/contracts` — the trading-side
+#      `OptionContract` model carries `open_interest`. One call per expiry
+#      yields OI for the entire expiry strip.
+#   2. **yfinance** — last-resort fallback when no Alpaca creds / Trading API
+#      errors out. Same merge-by-symbol pattern.
+#
+# Both mergers preserve all existing fields and ONLY patch contracts whose
+# `open_interest` is None or 0.
+# ---------------------------------------------------------------------------
+def _missing_oi_ratio(contracts: list[OptionContract]) -> float:
+    if not contracts:
+        return 0.0
+    missing = sum(1 for c in contracts if not c.open_interest)
+    return missing / len(contracts)
+
+
+def _merge_oi_from_alpaca_trading(
+    underlying: str, contracts: list[OptionContract],
+) -> list[OptionContract]:
+    """Pull OI from the Alpaca Trading API and merge by symbol."""
+    if not contracts:
+        return contracts
+    cfg = get_config()
+    if not cfg.secrets.has_alpaca:
+        return contracts
+    try:
+        from alpaca.trading.client import TradingClient
+        from alpaca.trading.requests import GetOptionContractsRequest
+    except ImportError:
+        return contracts
+    try:
+        # paper=True because options OI metadata is identical on paper/live and
+        # the user runs paper by default; the endpoint accepts either.
+        client = TradingClient(
+            cfg.secrets.alpaca_key_id, cfg.secrets.alpaca_secret_key, paper=True,
+        )
+    except Exception as exc:
+        log.debug("alpaca trading client init failed: %s", exc)
+        return contracts
+
+    alpaca_sym = cfg.alpaca_symbol(underlying) or underlying
+    needed_expiries = sorted({c.expiry for c in contracts if c.expiry is not None})
+
+    oi_map: dict[str, int] = {}
+    for exp in needed_expiries:
+        try:
+            req = GetOptionContractsRequest(
+                underlying_symbols=[alpaca_sym],
+                expiration_date=exp,
+                limit=1000,
+            )
+            resp = client.get_option_contracts(req)
+            # alpaca-py returns OptionContractsResponse with .option_contracts list
+            rows = getattr(resp, "option_contracts", None) or []
+            for row in rows:
+                sym = getattr(row, "symbol", None)
+                oi = getattr(row, "open_interest", None)
+                if sym and oi is not None:
+                    try:
+                        oi_map[str(sym)] = int(float(oi))
+                    except (TypeError, ValueError):
+                        pass
+        except Exception as exc:
+            log.debug("alpaca trading OI fetch for %s @ %s failed: %s",
+                      alpaca_sym, exp, exc)
+            continue
+
+    if not oi_map:
+        return contracts
+
+    patched = 0
+    out: list[OptionContract] = []
+    for c in contracts:
+        if (c.open_interest is None or c.open_interest == 0) and c.symbol in oi_map:
+            patched += 1
+            out.append(c.model_copy(update={"open_interest": oi_map[c.symbol]}))
+        else:
+            out.append(c)
+    if patched:
+        log.info("alpaca trading OI merge: patched %d/%d contracts on %s",
+                 patched, len(contracts), underlying)
+    return out
+
+
+def _merge_oi_from_yfinance(
+    underlying: str, contracts: list[OptionContract],
+) -> list[OptionContract]:
+    if not contracts:
+        return contracts
+    needed_expiries = sorted({c.expiry for c in contracts if c.expiry is not None})
+    if not needed_expiries:
+        return contracts
+    cfg = get_config()
+    yf_sym = cfg.yfinance_symbol(underlying) or underlying
+    try:
+        import yfinance as yf
+        tk = yf.Ticker(yf_sym)
+    except Exception as exc:
+        log.debug("yfinance OI merge: ticker init failed for %s: %s", yf_sym, exc)
+        return contracts
+
+    # Build {OCC_symbol: open_interest} index from yfinance.
+    oi_map: dict[str, int] = {}
+    vol_map: dict[str, int] = {}
+    for exp in needed_expiries:
+        try:
+            chain = tk.option_chain(exp.isoformat())
+        except Exception as exc:
+            log.debug("yfinance OI merge: chain @ %s failed: %s", exp, exc)
+            continue
+        for frame in (chain.calls, chain.puts):
+            if frame is None or frame.empty or "contractSymbol" not in frame.columns:
+                continue
+            for _, row in frame.iterrows():
+                sym = str(row.get("contractSymbol", "")).strip()
+                if not sym:
+                    continue
+                oi_raw = row.get("openInterest")
+                if pd.notna(oi_raw):
+                    try:
+                        oi_map[sym] = int(oi_raw)
+                    except (TypeError, ValueError):
+                        pass
+                vol_raw = row.get("volume")
+                if pd.notna(vol_raw):
+                    try:
+                        vol_map[sym] = int(vol_raw)
+                    except (TypeError, ValueError):
+                        pass
+
+    if not oi_map:
+        log.debug("yfinance OI merge: no OI rows recovered for %s", underlying)
+        return contracts
+
+    # Patch contracts that lack OI; also fill volume opportunistically.
+    patched = 0
+    out: list[OptionContract] = []
+    for c in contracts:
+        upd: dict[str, Any] = {}
+        if (c.open_interest is None or c.open_interest == 0) and c.symbol in oi_map:
+            upd["open_interest"] = oi_map[c.symbol]
+        if (c.volume is None or c.volume == 0) and c.symbol in vol_map:
+            upd["volume"] = vol_map[c.symbol]
+        if upd:
+            patched += 1
+            out.append(c.model_copy(update=upd))
+        else:
+            out.append(c)
+    if patched:
+        log.info("yfinance OI merge: patched %d/%d contracts on %s",
+                 patched, len(contracts), underlying)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 def fetch_chain(
@@ -361,6 +523,22 @@ def fetch_chain(
         missing_gamma = any(c.gamma is None and c.iv is not None for c in contracts)
         if missing_gamma:
             contracts = enrich_with_greeks(contracts, spot=spot, r=_RISK_FREE)
+
+    # OI merger: Alpaca's Data-API snapshot drops `open_interest`, killing GEX.
+    # Try Alpaca's Trading-API first (native, no extra dependency), then fall
+    # back to yfinance if Alpaca trading is unavailable. Triggers only when
+    # the existing OI coverage is poor (>50% of contracts missing OI).
+    if contracts and _missing_oi_ratio(contracts) > 0.5:
+        before = sum(1 for c in contracts if c.open_interest)
+        contracts = _merge_oi_from_alpaca_trading(underlying, contracts)
+        after_alpaca = sum(1 for c in contracts if c.open_interest)
+        if _missing_oi_ratio(contracts) > 0.5:
+            contracts = _merge_oi_from_yfinance(underlying, contracts)
+        after_yf = sum(1 for c in contracts if c.open_interest)
+        log.info(
+            "OI coverage for %s: %d → %d (Alpaca) → %d (yfinance) of %d contracts",
+            underlying, before, after_alpaca, after_yf, len(contracts),
+        )
 
     if contracts:
         try:

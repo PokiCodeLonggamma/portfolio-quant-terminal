@@ -30,5 +30,8 @@ beautifulsoup4>=4.12
 lxml>=5.0
 rich>=13.0
 
+# HMM regime detection engine
+hmmlearn>=0.3
+
 # Dev / tests (kept for parity with editable install)
 pytest>=8.0
