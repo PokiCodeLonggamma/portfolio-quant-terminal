@@ -51,8 +51,10 @@ from src.viz.dashboards import (
 from src.viz.plots import lightweight_candles
 from src.viz.theme import (
     PALETTE,
+    empty_state_html,
     hero_header_html,
     inject_streamlit_css,
+    section_header_html,
     status_pill_html,
 )
 
@@ -240,43 +242,100 @@ st.markdown(inject_streamlit_css(), unsafe_allow_html=True)
 
 
 # ============================================================================
-# Sidebar
+# Sidebar — reorganised in 4 grouped sections (Brand, Status, Inputs, Live)
 # ============================================================================
 with st.sidebar:
-    st.title("Quant Terminal")
-    st.caption("Institutional-grade portfolio analytics")
+    # --- 1. Brand identity ------------------------------------------------
+    st.markdown(
+        """
+        <div style='padding:14px 4px 12px 4px;border-bottom:1px solid var(--qt-border);
+                    margin-bottom:14px;'>
+            <div style='display:flex;align-items:center;gap:10px;'>
+                <div style='width:32px;height:32px;border-radius:8px;
+                            background:linear-gradient(135deg, var(--qt-accent) 0%, var(--qt-accent-alt) 100%);
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:18px;font-weight:700;color:#042F1A;
+                            box-shadow:0 4px 14px -2px var(--qt-accent);'>QT</div>
+                <div style='display:flex;flex-direction:column;line-height:1;'>
+                    <div style='font-weight:700;color:var(--qt-fg);font-size:1rem;'>Quant Terminal</div>
+                    <div style='font-size:0.7rem;color:var(--qt-fg-dim);margin-top:2px;
+                                font-family:var(--qt-font-mono);letter-spacing:0.05em;
+                                text-transform:uppercase;'>v0.1 · institutional</div>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     cfg = get_config()
+
+    # --- 2. Data-source status (compact pills row) ------------------------
+    pill_alpaca = status_pill_html("Alpaca", "live") if cfg.secrets.has_alpaca \
+        else status_pill_html("Alpaca off", "warning")
+    pill_sec = status_pill_html("SEC", "info") if cfg.secrets.sec_email \
+        else status_pill_html("SEC stub", "idle")
+    pill_fred = status_pill_html("FRED", "info") if cfg.secrets.fred_api_key \
+        else status_pill_html("FRED stub", "idle")
+    st.markdown(
+        f"""
+        <div style='font-size:0.65rem;color:var(--qt-fg-dim);
+                    text-transform:uppercase;letter-spacing:0.12em;font-weight:700;
+                    margin-bottom:6px;'>Data sources</div>
+        <div style='display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;'>
+            {pill_alpaca}{pill_sec}{pill_fred}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if not cfg.secrets.has_alpaca:
-        st.warning("Alpaca keys absent — yfinance fallback only.")
-    if not cfg.secrets.sec_email:
-        st.info("`SEC_EMAIL` non défini — SEC EDGAR utilisera un UA générique.")
-    if not cfg.secrets.fred_api_key:
-        st.info("`FRED_API_KEY` non défini — régime macro en mode dégradé.")
+        st.caption("⚠ Alpaca keys absent — yfinance fallback only.")
 
-    st.divider()
-    st.subheader("DEGIRO input")
-    uploaded = st.file_uploader("Positions CSV/XLSX", type=["csv", "xlsx", "xls"])
+    # --- 3. DEGIRO upload (boxed) ----------------------------------------
+    st.markdown(
+        "<div style='font-size:0.7rem;color:var(--qt-fg-dim);"
+        "text-transform:uppercase;letter-spacing:0.12em;font-weight:700;"
+        "margin-bottom:6px;margin-top:10px;'>Portfolio input</div>",
+        unsafe_allow_html=True,
+    )
+    uploaded = st.file_uploader(
+        "DEGIRO export (CSV / XLSX)",
+        type=["csv", "xlsx", "xls"],
+        label_visibility="collapsed",
+    )
 
-    st.divider()
+    # --- 4. Window picker ------------------------------------------------
+    st.markdown(
+        "<div style='font-size:0.7rem;color:var(--qt-fg-dim);"
+        "text-transform:uppercase;letter-spacing:0.12em;font-weight:700;"
+        "margin-bottom:6px;margin-top:18px;'>Analysis window</div>",
+        unsafe_allow_html=True,
+    )
     end_default = datetime.utcnow().date()
     start_default = end_default.replace(year=end_default.year - int(cfg.settings.get("history_years", 3)))
-    period = st.date_input("Window", value=(start_default, end_default))
+    period = st.date_input("Window", value=(start_default, end_default),
+                            label_visibility="collapsed")
     if isinstance(period, tuple) and len(period) == 2:
         start_dt, end_dt = (datetime.combine(p, datetime.min.time()) for p in period)
     else:
         start_dt = datetime.combine(start_default, datetime.min.time())
         end_dt = datetime.combine(end_default, datetime.min.time())
 
-    # --- Auto-refresh (Feature 4) ------------------------------------------
-    st.divider()
-    st.subheader("Live mode")
+    # --- 5. Live mode (Feature 4) ----------------------------------------
+    st.markdown(
+        "<div style='font-size:0.7rem;color:var(--qt-fg-dim);"
+        "text-transform:uppercase;letter-spacing:0.12em;font-weight:700;"
+        "margin-bottom:6px;margin-top:18px;'>Live mode</div>",
+        unsafe_allow_html=True,
+    )
     refresh_choice = st.selectbox(
         "Auto-refresh",
         options=["Off", "15s", "30s", "60s", "5min"],
         index=0,
         help="Reruns the app on a timer. Cache TTLs are short on live data so refreshes are real.",
         key="sidebar_autorefresh",
+        label_visibility="collapsed",
     )
     _refresh_ms = {
         "Off": 0,
@@ -291,9 +350,22 @@ with st.sidebar:
                 unsafe_allow_html=True,
             )
         except ImportError:
-            st.warning("`streamlit-autorefresh` non installé — `pip install streamlit-autorefresh`.")
+            st.warning("`streamlit-autorefresh` missing — `pip install streamlit-autorefresh`.")
     else:
         st.markdown(status_pill_html("idle", "idle"), unsafe_allow_html=True)
+
+    # --- Footer: build info ---------------------------------------------
+    st.markdown(
+        """
+        <div style='position:absolute;bottom:18px;left:18px;right:18px;
+                    padding-top:12px;border-top:1px solid var(--qt-border);
+                    font-size:0.65rem;color:var(--qt-fg-dim);
+                    font-family:var(--qt-font-mono);text-align:center;'>
+            15 tabs · Alpaca + yfinance · EUR FX
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ============================================================================
@@ -358,9 +430,8 @@ if portfolio is not None:
 st.markdown(
     hero_header_html(
         title="Quant Terminal",
-        subtitle="Portfolio · Trading · Watchlists · Macro · Smart-Money · "
-                 "Decision · Catalysts · Events · Backtest · Alerts · "
-                 "Execution · Snapshot/Tax · Squeeze · Kalman",
+        subtitle="Institutional dashboard — portfolio risk, options flow, smart-money tracking, "
+                 "regime detection and event-driven execution. 15 modules.",
         pills=_pills,
     ),
     unsafe_allow_html=True,
@@ -394,14 +465,36 @@ tabs = st.tabs([
 # ============================================================================
 with tabs[0]:
     if portfolio is None:
-        st.title("Portfolio Analytics")
-        st.info(
-            "👈 Charge un export DEGIRO (CSV ou XLSX) dans la barre latérale. "
-            "Le terminal résout chaque ticker via Alpaca → yfinance, "
-            "convertit en EUR à la volée, et calcule le moteur de risque."
+        st.markdown(
+            section_header_html(
+                "Portfolio Analytics",
+                icon="📈",
+                subtitle="Upload a DEGIRO export to unlock the risk engine, "
+                         "Greeks aggregator and 60+ portfolio analytics.",
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            empty_state_html(
+                title="No portfolio loaded",
+                text="Drop a DEGIRO CSV / XLSX into the sidebar — the terminal "
+                     "resolves each ticker via Alpaca → yfinance, converts to EUR "
+                     "on the fly, and spins up the risk engine.",
+                icon="📥",
+            ),
+            unsafe_allow_html=True,
         )
     else:
-        st.title("Portfolio Analytics")
+        st.markdown(
+            section_header_html(
+                "Portfolio Analytics",
+                icon="📈",
+                subtitle=f"{len(portfolio.holdings)} positions · EUR-normalised · "
+                         f"window {start_dt.date()} → {end_dt.date()}",
+                meta=f"NAV €{portfolio.total_value_eur:,.0f}".replace(",", " "),
+            ),
+            unsafe_allow_html=True,
+        )
         render_kpi_strip(
             portfolio,
             metrics,
@@ -514,10 +607,14 @@ with tabs[0]:
 # TAB 1 — TRADING BENCH (Cluster 5)
 # ============================================================================
 with tabs[1]:
-    st.title("🎯 Trading Bench")
-    st.caption(
-        "Event-driven directional options : LONG CALL / LONG PUT au pied du gamma (Δ≈0.25), "
-        "gates IV-rank/OI/debit, détection MM gamma-negatif."
+    st.markdown(
+        section_header_html(
+            "Trading Bench",
+            icon="🎯",
+            subtitle="Event-driven directional options — long calls/puts at the gamma toe (Δ≈0.25), "
+                     "IV-rank/OI/debit gates, dealer gamma-negative detection.",
+        ),
+        unsafe_allow_html=True,
     )
 
     trading_universe = sorted({
@@ -810,8 +907,15 @@ with tabs[1]:
 # TAB 2 — WATCHLISTS (Cluster 6)
 # ============================================================================
 with tabs[2]:
-    st.title("🛰️ Watchlists")
-    st.caption("Quantum · Photonics · Defense · Pre-IPO — sub-themes avec conviction + catalyseur.")
+    st.markdown(
+        section_header_html(
+            "Watchlists",
+            icon="🛰️",
+            subtitle="Quantum · Photonics · Defense · Pre-IPO — themed lists with "
+                     "conviction tags + catalyst calendar.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     @st.cache_data(show_spinner="Chargement watchlists…", ttl=60 * 30)
     def _watchlist_data(start: datetime, end: datetime):
@@ -875,8 +979,14 @@ with tabs[2]:
 # TAB 3 — MACRO & REGIME (Cluster 2)
 # ============================================================================
 with tabs[3]:
-    st.title("🌐 Macro & Regime")
-    st.caption("Régime macro 2×2×2 · corrélations roulantes · pair-trade screener · liquidity radar.")
+    st.markdown(
+        section_header_html(
+            "Macro & Regime",
+            icon="🌐",
+            subtitle="2×2×2 macro regime · rolling correlations · pair-trade screener · liquidity radar.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     macro_sub = st.tabs(["Regime", "Correlations", "Pair Screener", "Liquidity"])
 
@@ -945,8 +1055,14 @@ with tabs[3]:
 # TAB 4 — SMART-MONEY & FUNDAMENTALS (Cluster 1)
 # ============================================================================
 with tabs[4]:
-    st.title("💸 Smart-Money & Fundamentals")
-    st.caption("SEC EDGAR — Form 4 · 13F · Dilution · Cash runway · ETF flows · Gov contracts · Hyperscaler capex.")
+    st.markdown(
+        section_header_html(
+            "Smart-Money & Fundamentals",
+            icon="💸",
+            subtitle="SEC EDGAR — Form 4 · 13F · Dilution · Cash runway · ETF flows · Gov contracts · Hyperscaler capex.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     sec_sub = st.tabs([
         "🌐 Overview",
@@ -1087,8 +1203,14 @@ with tabs[4]:
 # TAB 5 — DECISION SUPPORT (Cluster 3, Wave 2)
 # ============================================================================
 with tabs[5]:
-    st.title("🧠 Decision Support")
-    st.caption("Conviction matrix · VaR-contribution sizing · Risk-parity preview · Thesis journal · Hedge cost.")
+    st.markdown(
+        section_header_html(
+            "Decision Support",
+            icon="🧠",
+            subtitle="Conviction matrix · VaR-contribution sizing · Risk-parity preview · Thesis journal · Hedge cost.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     dec_sub = st.tabs(["Conviction & Sizing", "Thesis Journal", "Hedge Cost"])
 
@@ -1207,8 +1329,14 @@ with tabs[5]:
 # TAB 6 — CATALYSTS & NEWS (Cluster 4, Wave 2)
 # ============================================================================
 with tabs[6]:
-    st.title("📅 Catalysts & News")
-    st.caption("Earnings · FOMC/ECB/OPEC · NRC · Launches · Implied moves · News flow + sentiment.")
+    st.markdown(
+        section_header_html(
+            "Catalysts & News",
+            icon="📅",
+            subtitle="Earnings · FOMC/ECB/OPEC · NRC · Launches · Implied moves · News flow + sentiment.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     cal_sub = st.tabs([
         "Catalyst Calendar", "Earnings", "Macro Board",
@@ -1419,10 +1547,14 @@ with tabs[6]:
 # TAB 7 — EVENT TRADING (Feature 6: wizard + earnings simulator)
 # ============================================================================
 with tabs[7]:
-    st.title("🎬 Event Trading")
-    st.caption(
-        "Pre-event setup wizard (Δ-25 candidates per catalyst) + earnings reaction "
-        "simulator (spot/IV shock grid)."
+    st.markdown(
+        section_header_html(
+            "Event Trading",
+            icon="🎬",
+            subtitle="Pre-event setup wizard (Δ-25 candidates per catalyst) + earnings "
+                     "reaction simulator (spot/IV shock grid).",
+        ),
+        unsafe_allow_html=True,
     )
 
     et_sub = st.tabs(["Pre-event wizard", "Earnings simulator"])
@@ -1478,11 +1610,25 @@ with tabs[7]:
 # TAB 8 — BACKTEST (Cluster 7)
 # ============================================================================
 with tabs[8]:
-    st.title("📒 Backtest")
-    st.caption("Simule l'application de règles (max single, max DD, stop-loss, momentum entry…) sur le portefeuille.")
+    st.markdown(
+        section_header_html(
+            "Backtest",
+            icon="📒",
+            subtitle="Apply rule sets (max single position, max DD, stop-loss, momentum entry…) "
+                     "to the loaded portfolio and benchmark them against the baseline.",
+        ),
+        unsafe_allow_html=True,
+    )
 
     if portfolio is None or prices_eur.empty:
-        st.info("Charge un DEGIRO + une fenêtre temporelle pour activer le backtest.")
+        st.markdown(
+            empty_state_html(
+                title="Backtest is asleep",
+                text="Load a DEGIRO file and pick a time window in the sidebar to unlock the engine.",
+                icon="🛌",
+            ),
+            unsafe_allow_html=True,
+        )
     else:
         rule_specs = render_rule_picker()
         if rule_specs:
@@ -1524,10 +1670,14 @@ with tabs[8]:
 # TAB 9 — ALERTS (Feature 2)
 # ============================================================================
 with tabs[9]:
-    st.title("🔔 Alerts")
-    st.caption(
-        "Triggers évalués à chaque refresh (Live mode) — Discord / Email / Telegram / Streamlit. "
-        "Édite `config/alerts.yaml` à chaud."
+    st.markdown(
+        section_header_html(
+            "Alerts",
+            icon="🔔",
+            subtitle="Rule-driven trigger engine — Discord · Email · Telegram · Streamlit. "
+                     "Edit `config/alerts.yaml` hot.",
+        ),
+        unsafe_allow_html=True,
     )
 
     # Load triggers, build evaluation context from already-fetched data
@@ -1577,10 +1727,14 @@ with tabs[9]:
 # TAB 10 — EXECUTION (Feature 1)
 # ============================================================================
 with tabs[10]:
-    st.title("📡 Execution")
-    st.caption(
-        "OMS connecté à Alpaca. Paper-mode par défaut, gates pré-trade obligatoires, "
-        "audit log persistant."
+    st.markdown(
+        section_header_html(
+            "Execution",
+            icon="📡",
+            subtitle="OMS wired to Alpaca. Paper-mode by default, mandatory pre-trade gates, "
+                     "persistent audit log.",
+        ),
+        unsafe_allow_html=True,
     )
 
     exec_mode = resolve_mode()
@@ -1680,10 +1834,14 @@ with tabs[10]:
 # TAB 11 — SNAPSHOT & TAX (Feature 5)
 # ============================================================================
 with tabs[11]:
-    st.title("📊 Snapshot & Tax")
-    st.caption(
-        "Snapshots quotidiens du portefeuille + tax lots FIFO (cost basis EUR, "
-        "réalisation per-vente, 2074-CMV ready)."
+    st.markdown(
+        section_header_html(
+            "Snapshot & Tax",
+            icon="📊",
+            subtitle="Daily portfolio snapshots + FIFO tax lots (EUR cost basis, per-sale realisation, "
+                     "2074-CMV ready).",
+        ),
+        unsafe_allow_html=True,
     )
 
     snaptax_sub = st.tabs(["Snapshot history", "Replay a snapshot", "Tax lots", "Realised PnL", "Import / Manual"])
@@ -1735,11 +1893,14 @@ with tabs[11]:
 # TAB 12 — SHORT SQUEEZE SCANNER (existing)
 # ============================================================================
 with tabs[12]:
-    st.title("🔥 Short Squeeze Scanner")
-    st.caption(
-        "Two engines : (1) quick SEC SHO + Finviz threshold screen · "
-        "(2) **Legacy 4-pillar deep scan** (Finviz scrape + EDGAR 13F + options "
-        "flow + 6 technical signals)."
+    st.markdown(
+        section_header_html(
+            "Short Squeeze Scanner",
+            icon="🔥",
+            subtitle="Two engines — quick SEC SHO + Finviz threshold screen, plus the "
+                     "Legacy 4-pillar deep scan (Finviz scrape · EDGAR 13F · options flow · 6 technical signals).",
+        ),
+        unsafe_allow_html=True,
     )
 
     sq_sub = st.tabs(["⚡ Quick scan (SHO + Finviz)", "🏛️ Legacy 4-pillar deep scan"])
@@ -1919,11 +2080,15 @@ with tabs[12]:
 # TAB 13 — HMM REGIME (volatility state machine)
 # ============================================================================
 with tabs[13]:
-    st.title("🌀 HMM Regime Engine")
-    st.caption(
-        "Gaussian Hidden Markov Model on benchmark log-returns. "
-        "Detects volatility regimes (LOW / MID / HIGH) with posterior probabilities, "
-        "transition matrix, and expected duration per state."
+    st.markdown(
+        section_header_html(
+            "HMM Regime Engine",
+            icon="🌀",
+            subtitle="Gaussian Hidden Markov Model on benchmark log-returns. "
+                     "Detects volatility regimes (LOW / MID / HIGH) with posterior probabilities, "
+                     "transition matrix and expected duration per state.",
+        ),
+        unsafe_allow_html=True,
     )
 
     from src.regime.hmm import fit_volatility_hmm
@@ -2000,8 +2165,16 @@ with tabs[13]:
 # TAB 14 — KALMAN ELASTIC TRADING (existing — moved from 13 after HMM insert)
 # ============================================================================
 with tabs[14]:
-    st.title("🤖 Kalman Elastic Trading")
-    st.caption(f"Lecture des artefacts depuis : `{artefacts_dir()}`")
+    st.markdown(
+        section_header_html(
+            "Kalman Elastic Trading",
+            icon="🤖",
+            subtitle="Read-only viewer over the Kalman pipeline artefacts (equity curve, trades, "
+                     "Phase 2 / Phase 3 metrics).",
+            meta=f"src: {artefacts_dir()}",
+        ),
+        unsafe_allow_html=True,
+    )
 
     run = load_run()
     if run.is_empty:
