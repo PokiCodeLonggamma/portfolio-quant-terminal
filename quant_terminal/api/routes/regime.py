@@ -1,11 +1,13 @@
-"""Regime endpoints (Phase 1 — wires RegimeService).
+"""Regime endpoints — wires RegimeService.
 
-- GET /api/regime/hmm/{ticker}?n_states=3  → HMMRegime
+Phase 1: HMM regime fit.
+Phase 3: @cached (HMM fit is expensive — 1h TTL).
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
+from api.cache import cached
 from src.services import RegimeService
 from src.services.schemas import HMMRegime
 
@@ -15,6 +17,7 @@ _service = RegimeService()
 
 
 @router.get("/hmm/{ticker}", response_model=HMMRegime)
+@cached(ttl_seconds=3600, prefix="regime.hmm", model_cls=HMMRegime)
 async def get_hmm(
     ticker: str,
     n_states: int = Query(3, ge=2, le=5, description="Number of HMM states"),

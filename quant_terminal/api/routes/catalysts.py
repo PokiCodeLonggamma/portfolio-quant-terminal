@@ -1,8 +1,13 @@
-"""Catalysts endpoints (Phase 2)."""
+"""Catalysts endpoints.
+
+Phase 2: upcoming events.
+Phase 3: @cached (10min TTL — yfinance calendar is slow).
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
+from api.cache import cached
 from src.services import CatalystsService
 from src.services.schemas import CatalystFeed
 
@@ -12,6 +17,7 @@ _service = CatalystsService()
 
 
 @router.get("/upcoming", response_model=CatalystFeed)
+@cached(ttl_seconds=600, prefix="catalysts.upcoming", model_cls=CatalystFeed)
 async def get_upcoming(
     tickers: str | None = Query(
         None,
