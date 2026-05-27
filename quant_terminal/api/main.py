@@ -21,6 +21,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.deps import get_redis_url
+from api.routes import cross_asset as cross_asset_router
+from api.routes import options as options_router
+from api.routes import regime as regime_router
 from api.routes import universe as universe_router
 
 VERSION = "0.1.0"
@@ -68,6 +71,9 @@ app.add_middleware(
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(universe_router.router)
+app.include_router(cross_asset_router.router)
+app.include_router(options_router.router)
+app.include_router(regime_router.router)
 
 
 # ---------------------------------------------------------------------------
