@@ -12,14 +12,18 @@ without hitting yfinance or Alpaca.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Callable
 
 from src.common.schemas import OptionContract
 from src.services.schemas import (
+    ChainContractOut,
+    ChainDump,
     GexBucket,
     GexSummary,
     IVTermStructurePoint,
+    VolSurfaceDump,
+    VolSurfacePoint,
 )
 from src.trading.gex import (
     compute_gex,
@@ -28,6 +32,7 @@ from src.trading.gex import (
 )
 from src.trading.gex_enrich import put_call_ratio
 from src.trading.iv_analytics import iv_term_structure
+from src.trading.vol_surface import build_surface_grid
 
 
 def _wall_strikes(gex_df) -> tuple[float | None, float | None]:
@@ -174,6 +179,77 @@ class OptionsService:
                 contango_proxy=cval,
             ))
         return points
+
+    # -------------------------------------------------------------------------
+    # Chain dump — full JSON-safe contract list
+    # -------------------------------------------------------------------------
+    def get_chain_dump(self, ticker: str, *, max_contracts: int = 2000) -> ChainDump | None:
+        """Return the full chain in a JSON-safe Pydantic envelope.
+
+        ``max_contracts`` caps the response size for over-the-wire safety.
+        """
+        spot = self.spot_fetch_fn(ticker)
+        chain = self.chain_fetch_fn(ticker)
+        if not chain:
+            return None
+        expiries = sorted({c.expiry for c in chain})
+        contracts_out: list[ChainContractOut] = []
+        for c in chain[:max_contracts]:
+            contracts_out.append(ChainContractOut(
+                underlying=c.underlying,
+                symbol=c.symbol,
+                expiry=c.expiry,
+                strike=float(c.strike),
+                right=c.right.value,  # OptionRight enum → "C"/"P"
+                bid=c.bid, ask=c.ask, mid=c.mid,
+                iv=c.iv, delta=c.delta, gamma=c.gamma,
+                theta=c.theta, vega=c.vega,
+                open_interest=c.open_interest, volume=c.volume,
+            ))
+        return ChainDump(
+            ticker=ticker,
+            spot=float(spot) if spot else None,
+            n_contracts=len(chain),
+            expiries=expiries,
+            contracts=contracts_out,
+            asof=datetime.utcnow(),
+        )
+
+    # -------------------------------------------------------------------------
+    # Vol surface — long-form points for 3D rendering on the frontend
+    # -------------------------------------------------------------------------
+    def get_vol_surface_dump(self, ticker: str) -> VolSurfaceDump | None:
+        """Return vol surface points (dte, strike, right, iv, moneyness)."""
+        spot = self.spot_fetch_fn(ticker)
+        if spot is None or spot <= 0:
+            return None
+        chain = self.chain_fetch_fn(ticker)
+        if not chain:
+            return None
+        grid = build_surface_grid(chain, float(spot))
+        if grid is None or grid.empty:
+            return None
+        points: list[VolSurfacePoint] = []
+        for _, row in grid.iterrows():
+            expiry = row.get("expiry")
+            if hasattr(expiry, "date"):
+                expiry = expiry.date()
+            if not isinstance(expiry, date):
+                continue
+            points.append(VolSurfacePoint(
+                expiry=expiry,
+                dte_days=int(row.get("dte", 0)),
+                strike=float(row.get("strike", 0.0)),
+                right=row.get("right", "C"),
+                iv=float(row.get("iv", 0.0)),
+                moneyness=float(row.get("moneyness", 0.0)),
+            ))
+        return VolSurfaceDump(
+            ticker=ticker,
+            spot=float(spot),
+            points=points,
+            asof=datetime.utcnow(),
+        )
 
     # -------------------------------------------------------------------------
     # Health / availability

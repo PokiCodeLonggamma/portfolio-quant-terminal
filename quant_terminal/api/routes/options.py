@@ -1,15 +1,19 @@
-"""Options endpoints (Phase 1 — wires OptionsService).
+"""Options endpoints — wires OptionsService.
 
-- GET /api/options/{ticker}/gex                → GexSummary
-- GET /api/options/{ticker}/iv_term_structure  → list[IVTermStructurePoint]
-- GET /api/options/{ticker}/available          → boolean
+Phase 1: gex, iv_term_structure, available.
+Phase 2: chain dump, vol_surface.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from src.services import OptionsService
-from src.services.schemas import GexSummary, IVTermStructurePoint
+from src.services.schemas import (
+    ChainDump,
+    GexSummary,
+    IVTermStructurePoint,
+    VolSurfaceDump,
+)
 
 router = APIRouter(prefix="/api/options", tags=["options"])
 
@@ -42,3 +46,31 @@ async def get_chain_available(ticker: str) -> dict:
         "ticker": ticker.upper(),
         "available": _service.chain_available(ticker.upper()),
     }
+
+
+# --------------------------------------------------------------------------
+# Phase 2 — chain dump + vol surface
+# --------------------------------------------------------------------------
+@router.get("/{ticker}/chain", response_model=ChainDump)
+async def get_chain(
+    ticker: str,
+    max_contracts: int = Query(2000, ge=10, le=5000),
+) -> ChainDump:
+    dump = _service.get_chain_dump(ticker.upper(), max_contracts=max_contracts)
+    if dump is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Chain unavailable for {ticker}.",
+        )
+    return dump
+
+
+@router.get("/{ticker}/vol_surface", response_model=VolSurfaceDump)
+async def get_vol_surface(ticker: str) -> VolSurfaceDump:
+    surface = _service.get_vol_surface_dump(ticker.upper())
+    if surface is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Vol surface unavailable for {ticker}.",
+        )
+    return surface
