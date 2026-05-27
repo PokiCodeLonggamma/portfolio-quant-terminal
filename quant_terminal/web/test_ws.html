@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quant Terminal — WS /ws/prices tester</title>
+<style>
+  body { background:#0a0a0f; color:#faf7f2; font-family: "JetBrains Mono", monospace; padding:24px; }
+  h1 { color:#d4af37; }
+  button { background:#1a1a24; color:#faf7f2; border:1px solid #2a2a38; padding:8px 14px;
+           font-family:"JetBrains Mono",monospace; text-transform:uppercase; cursor:pointer;
+           letter-spacing:.06em; border-radius:0; margin:4px; }
+  button:hover { border-color:#d4af37; }
+  pre { background:#14141c; border:1px solid #2a2a38; padding:12px; height:60vh; overflow:auto;
+        border-left:3px solid #d4af37; font-size:0.78rem; }
+  .tick { color:#2ee89e; }
+  .err  { color:#ff3838; }
+  .sys  { color:#22d3ee; }
+  input { background:#14141c; color:#faf7f2; border:1px solid #2a2a38; padding:6px;
+          font-family:inherit; border-radius:0; }
+</style>
+</head>
+<body>
+<h1>§ WS /ws/prices — Live tester</h1>
+<p>Endpoint: <code>ws://localhost:8000/ws/prices</code></p>
+<div>
+  <input id="t" value="ES,NQ,CL,GC,BTC" />
+  <button onclick="connect()">Connect</button>
+  <button onclick="subscribe()">Subscribe</button>
+  <button onclick="unsubscribe()">Unsubscribe</button>
+  <button onclick="ping()">Ping</button>
+  <button onclick="ws && ws.close()">Disconnect</button>
+  <button onclick="document.getElementById('log').textContent=''">Clear</button>
+</div>
+<pre id="log"></pre>
+<script>
+let ws = null;
+function log(line, cls) {
+  const pre = document.getElementById('log');
+  const span = document.createElement('span');
+  if (cls) span.className = cls;
+  span.textContent = new Date().toISOString().slice(11,19) + " " + line + "\n";
+  pre.appendChild(span);
+  pre.scrollTop = pre.scrollHeight;
+}
+function connect() {
+  ws = new WebSocket("ws://localhost:8000/ws/prices");
+  ws.onopen    = () => log("[open]", "sys");
+  ws.onclose   = () => log("[close]", "sys");
+  ws.onerror   = (e) => log("[error] " + e.type, "err");
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === "tick") {
+      log(`tick  ${msg.ticker.padEnd(6)} ${msg.price.toFixed(2)}`, "tick");
+    } else if (msg.type === "error") {
+      log("error " + msg.message, "err");
+    } else {
+      log(msg.type + " " + JSON.stringify(msg.tickers || msg), "sys");
+    }
+  };
+}
+function subscribe() {
+  const tickers = document.getElementById('t').value
+    .split(",").map(s => s.trim()).filter(Boolean);
+  ws && ws.send(JSON.stringify({op:"subscribe", tickers}));
+}
+function unsubscribe() {
+  const tickers = document.getElementById('t').value
+    .split(",").map(s => s.trim()).filter(Boolean);
+  ws && ws.send(JSON.stringify({op:"unsubscribe", tickers}));
+}
+function ping() { ws && ws.send(JSON.stringify({op:"ping"})); }
+</script>
+</body>
+</html>
