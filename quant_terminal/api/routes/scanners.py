@@ -1,8 +1,13 @@
-"""Scanner endpoints (Phase 2) — universe (Δ-25) + short-squeeze."""
+"""Scanner endpoints — universe (Δ-25) + short-squeeze.
+
+Phase 2: surface.
+Phase 3: @cached (universe scan is *very* expensive — 15min TTL).
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
+from api.cache import cached
 from src.services import ScannerService
 from src.services.schemas import SqueezeRow, UniverseScanRow
 
@@ -12,6 +17,7 @@ _service = ScannerService()
 
 
 @router.get("/universe", response_model=list[UniverseScanRow])
+@cached(ttl_seconds=900, prefix="scan.universe", model_cls=UniverseScanRow)
 async def scan_universe_endpoint(
     universe: str | None = Query(
         None,
@@ -26,6 +32,7 @@ async def scan_universe_endpoint(
 
 
 @router.get("/squeeze", response_model=list[SqueezeRow])
+@cached(ttl_seconds=600, prefix="scan.squeeze", model_cls=SqueezeRow)
 async def scan_squeeze_endpoint(
     limit: int = Query(20, ge=1, le=100),
 ) -> list[SqueezeRow]:

@@ -1,8 +1,13 @@
-"""News endpoints (Phase 2)."""
+"""News endpoints.
+
+Phase 2: latest pulse.
+Phase 3: @cached (5min TTL — RSS aggregation is heavy).
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
+from api.cache import cached
 from src.services import NewsService
 from src.services.schemas import NewsPulse
 
@@ -12,6 +17,7 @@ _service = NewsService()
 
 
 @router.get("/latest", response_model=NewsPulse)
+@cached(ttl_seconds=300, prefix="news.latest", model_cls=NewsPulse)
 async def get_latest(
     tickers: str | None = Query(
         None,

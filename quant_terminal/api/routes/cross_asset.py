@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, HTTPException
 
+from api.cache import cached
 from src.services import CrossAssetService
 from src.services.schemas import HeatmapRow, QuoteBatch
 
@@ -35,5 +36,6 @@ async def post_quotes_batch(
 
 
 @router.get("/heatmap", response_model=list[HeatmapRow])
+@cached(ttl_seconds=300, prefix="xa.heatmap", model_cls=HeatmapRow)
 async def get_heatmap() -> list[HeatmapRow]:
     return _service.get_heatmap_rows()
