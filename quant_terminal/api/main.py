@@ -27,6 +27,7 @@ from api.routes import catalysts as catalysts_router
 from api.routes import cross_asset as cross_asset_router
 from api.routes import news as news_router
 from api.routes import options as options_router
+from api.routes import macro as macro_router
 from api.routes import portfolio as portfolio_router
 from api.routes import regime as regime_router
 from api.routes import scanners as scanners_router
@@ -86,6 +87,8 @@ app.include_router(portfolio_router.router)
 app.include_router(news_router.router)
 app.include_router(catalysts_router.router)
 app.include_router(scanners_router.router)
+# Phase 5a — macro snapshot
+app.include_router(macro_router.router)
 # Phase 3 admin/cache management
 app.include_router(admin_router.router)
 # Phase 4 auth

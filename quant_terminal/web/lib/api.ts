@@ -71,6 +71,78 @@ export type Health = {
 };
 
 // ---------------------------------------------------------------------------
+// P5a additions — typed schemas for markets cluster
+// ---------------------------------------------------------------------------
+export type HeatmapRow = {
+  asset_class: string;
+  logical: string;
+  name: string;
+  chg_1d_pct: number | null;
+  chg_5d_pct: number | null;
+};
+
+export type MacroSnapshot = {
+  vix_level: number | null;
+  vix_term_structure: "contango" | "backwardation" | "flat" | null;
+  dxy: number | null;
+  us10y_yield: number | null;
+  spy_above_200d: boolean | null;
+  asof: string;
+};
+
+export type HMMRegime = {
+  ticker: string;
+  current_label: string;
+  current_probs: Record<string, number>;
+  n_states: number;
+  sample_size: number;
+  asof: string;
+};
+
+export type SqueezeRow = {
+  ticker: string;
+  short_pct_float: number | null;
+  days_to_cover: number | null;
+  cost_to_borrow_pct: number | null;
+  utilization_pct: number | null;
+  on_sho_threshold: boolean;
+  composite_score: number | null;
+};
+
+export type CatalystOut = {
+  event_id: string;
+  ticker: string | null;
+  category: string;
+  title: string;
+  start: string;
+  end: string | null;
+  notes: string | null;
+  estimated_eps: number | null;
+  actual_eps: number | null;
+};
+
+export type CatalystFeed = {
+  horizon_days: number;
+  items: CatalystOut[];
+  asof: string;
+};
+
+export type NewsItem = {
+  title: string;
+  url: string;
+  source: string;
+  published_at: string | null;
+  summary: string | null;
+  tickers: string[];
+  sentiment: "positive" | "neutral" | "negative" | null;
+};
+
+export type NewsPulse = {
+  items: NewsItem[];
+  asof: string;
+};
+
+// ---------------------------------------------------------------------------
 // Endpoint helpers
 // ---------------------------------------------------------------------------
 export const getHealth = () => fetchJSON<Health>("/health");
@@ -79,3 +151,17 @@ export const getAssetClass = (key: string) =>
   fetchJSON<AssetClass>(`/api/universe/${encodeURIComponent(key)}`);
 export const getContract = (logical: string) =>
   fetchJSON<Contract>(`/api/universe/contracts/${encodeURIComponent(logical)}`);
+
+// P5a — markets
+export const getHeatmap = () => fetchJSON<HeatmapRow[]>("/api/cross-asset/heatmap");
+export const getMacro = () => fetchJSON<MacroSnapshot>("/api/regime/macro");
+export const getHmm = (ticker: string, n_states = 3) =>
+  fetchJSON<HMMRegime>(
+    `/api/regime/hmm/${encodeURIComponent(ticker)}?n_states=${n_states}`,
+  );
+export const getSqueeze = (limit = 20) =>
+  fetchJSON<SqueezeRow[]>(`/api/scanners/squeeze?limit=${limit}`);
+export const getCatalysts = (horizon_days = 30) =>
+  fetchJSON<CatalystFeed>(`/api/catalysts/upcoming?horizon_days=${horizon_days}`);
+export const getNews = (limit = 50) =>
+  fetchJSON<NewsPulse>(`/api/news/latest?limit=${limit}`);
