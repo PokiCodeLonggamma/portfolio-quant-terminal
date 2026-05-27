@@ -50,7 +50,6 @@ from src.viz.dashboards import (
 )
 from src.viz.plots import lightweight_candles
 from src.viz.theme import (
-    PALETTE,
     empty_state_html,
     hero_header_html,
     inject_streamlit_css,
