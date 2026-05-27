@@ -50,7 +50,6 @@ from src.viz.dashboards import (
 )
 from src.viz.plots import lightweight_candles
 from src.viz.theme import (
-    PALETTE,
     empty_state_html,
     hero_header_html,
     inject_streamlit_css,
@@ -2571,8 +2570,9 @@ with tabs[16]:
 # Footer
 # ============================================================================
 st.markdown(
-    f"<div style='margin-top:2rem;color:{PALETTE.fg_muted};font-size:0.75rem;text-align:center;'>"
-    "Quant Terminal · Alpaca + yfinance · FX EUR · 17 tabs · Cross-Asset · Daily Brief · HMM · Live Book · IV Crush"
-    "</div>",
+    f"<div class='qt-footer' style='margin-top:2rem;text-align:center;'>"
+    "Quant Terminal v3 · Wall Street Brutalist · Alpaca + yfinance · 17 tabs · "
+    "Cross-Asset · Daily Brief · HMM · Live Book · IV Crush"
+    f"</div>",
     unsafe_allow_html=True,
 )
