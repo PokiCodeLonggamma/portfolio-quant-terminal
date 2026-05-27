@@ -1,0 +1,263 @@
+# ============================================================================
+# CROSS-ASSET UNIVERSE (CDC §1)
+# ----------------------------------------------------------------------------
+# Taxonomie complète issue du cahier des charges institutionnel.
+# Structure :
+#   asset_classes:
+#     <class_key>:
+#       label:        nom affichable
+#       icon:         emoji utilisé dans la matrice
+#       order:        priorité d'affichage (asc)
+#       contracts:
+#         - logical:    clé canonique (ex: "ES")
+#           name:       nom long ("S&P 500 E-mini")
+#           tier:       "standard" | "mini" | "micro"
+#           root:       root family (ex: "SP" pour SP/ES/MES)
+#           exchange:   "CME" | "CBOT" | "NYMEX" | "COMEX" | "CBOE" | "Eurex"
+#                       | "Euronext" | "ICE_EU" | "NASDAQ" | "NYSE_ARCA"
+#           yfinance:   symbole yfinance ("ES=F", "VX=F", ...)
+#           alpaca:     symbole Alpaca (vide si non listé : futures non US-equity)
+#           tradingview: symbole TV ("CME_MINI:ES1!", "CBOE:VX1!", ...)
+#           multiplier: multiplicateur du contrat (USD/point ou EUR/point)
+#           currency:   "USD" | "EUR" | "GBP" | "CHF"
+#           tick_size:  tick (en points)
+#           tick_value: valeur du tick (en currency)
+#           option_market: true si chaîne d'options listée et liquide
+#           notes:      free-form
+# ============================================================================
+
+asset_classes:
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.1  INDICES US
+  # ────────────────────────────────────────────────────────────────────────
+  us_indices:
+    label: "Indices US"
+    icon: "🇺🇸"
+    order: 10
+    contracts:
+      # S&P 500
+      - { logical: SP,   name: "S&P 500 (full)",        tier: standard, root: SP,  exchange: CME,  yfinance: "ES=F",  alpaca: "",     tradingview: "CME:SP1!",      multiplier: 250, currency: USD, tick_size: 0.10, tick_value: 25.00,  option_market: true,  notes: "Quasi-disparu, remplacé par ES" }
+      - { logical: ES,   name: "S&P 500 E-mini",        tier: mini,     root: SP,  exchange: CME,  yfinance: "ES=F",  alpaca: "",     tradingview: "CME_MINI:ES1!", multiplier: 50,  currency: USD, tick_size: 0.25, tick_value: 12.50,  option_market: true,  notes: "Phare microstructure US" }
+      - { logical: MES,  name: "S&P 500 Micro E-mini",  tier: micro,    root: SP,  exchange: CME,  yfinance: "MES=F", alpaca: "",     tradingview: "CME_MINI:MES1!",multiplier: 5,   currency: USD, tick_size: 0.25, tick_value: 1.25,   option_market: false, notes: "Idéal FTMO 10k€" }
+      # Nasdaq 100
+      - { logical: ND,   name: "Nasdaq 100 (full)",     tier: standard, root: ND,  exchange: CME,  yfinance: "NQ=F",  alpaca: "",     tradingview: "CME:ND1!",      multiplier: 100, currency: USD, tick_size: 0.25, tick_value: 25.00,  option_market: false, notes: "Quasi-disparu" }
+      - { logical: NQ,   name: "Nasdaq 100 E-mini",     tier: mini,     root: ND,  exchange: CME,  yfinance: "NQ=F",  alpaca: "",     tradingview: "CME_MINI:NQ1!", multiplier: 20,  currency: USD, tick_size: 0.25, tick_value: 5.00,   option_market: true,  notes: "Référence tech" }
+      - { logical: MNQ,  name: "Nasdaq 100 Micro",      tier: micro,    root: ND,  exchange: CME,  yfinance: "MNQ=F", alpaca: "",     tradingview: "CME_MINI:MNQ1!",multiplier: 2,   currency: USD, tick_size: 0.25, tick_value: 0.50,   option_market: false, notes: "Sizing prop firm" }
+      # Dow Jones
+      - { logical: DJ,   name: "Dow Jones (full)",      tier: standard, root: DJ,  exchange: CBOT, yfinance: "YM=F",  alpaca: "",     tradingview: "CBOT:DJ1!",     multiplier: 25,  currency: USD, tick_size: 1.0,  tick_value: 25.00,  option_market: false, notes: "" }
+      - { logical: YM,   name: "Dow Jones E-mini",      tier: mini,     root: DJ,  exchange: CBOT, yfinance: "YM=F",  alpaca: "",     tradingview: "CBOT_MINI:YM1!",multiplier: 5,   currency: USD, tick_size: 1.0,  tick_value: 5.00,   option_market: true,  notes: "" }
+      - { logical: MYM,  name: "Dow Jones Micro",       tier: micro,    root: DJ,  exchange: CBOT, yfinance: "MYM=F", alpaca: "",     tradingview: "CBOT_MINI:MYM1!",multiplier: 0.5,currency: USD, tick_size: 1.0,  tick_value: 0.50,   option_market: false, notes: "" }
+      # Russell 2000
+      - { logical: RTY,  name: "Russell 2000 E-mini",   tier: mini,     root: RTY, exchange: CME,  yfinance: "RTY=F", alpaca: "",     tradingview: "CME_MINI:RTY1!",multiplier: 50,  currency: USD, tick_size: 0.10, tick_value: 5.00,   option_market: true,  notes: "Pas de contrat 'full'" }
+      - { logical: M2K,  name: "Russell 2000 Micro",    tier: micro,    root: RTY, exchange: CME,  yfinance: "M2K=F", alpaca: "",     tradingview: "CME_MINI:M2K1!",multiplier: 5,   currency: USD, tick_size: 0.10, tick_value: 0.50,   option_market: false, notes: "" }
+      # S&P MidCap 400
+      - { logical: EMD,  name: "S&P MidCap 400 E-mini", tier: mini,     root: EMD, exchange: CME,  yfinance: "",      alpaca: "",     tradingview: "CME_MINI:EMD1!",multiplier: 100, currency: USD, tick_size: 0.10, tick_value: 10.00,  option_market: false, notes: "Pas de yfinance ticker stable" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.2  VOLATILITÉ
+  # ────────────────────────────────────────────────────────────────────────
+  volatility:
+    label: "Volatilité"
+    icon: "⚡"
+    order: 20
+    contracts:
+      - { logical: VX,   name: "VIX futures (standard)",tier: standard, root: VX,  exchange: CBOE, yfinance: "VX=F",  alpaca: "",     tradingview: "CBOE:VX1!",    multiplier: 1000,currency: USD, tick_size: 0.05, tick_value: 50.00,  option_market: true,  notes: "Term structure clé" }
+      - { logical: VXM,  name: "Mini VIX",              tier: mini,     root: VX,  exchange: CBOE, yfinance: "",      alpaca: "",     tradingview: "CBOE:VXM1!",   multiplier: 100, currency: USD, tick_size: 0.05, tick_value: 5.00,   option_market: false, notes: "Sizing réduit" }
+      - { logical: VIX,  name: "VIX (spot index)",      tier: standard, root: VX,  exchange: CBOE, yfinance: "^VIX",  alpaca: "",     tradingview: "CBOE:VIX",     multiplier: 1,   currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "Index, non tradable directement" }
+      - { logical: VVIX, name: "VVIX (vol of vol)",     tier: standard, root: VVIX,exchange: CBOE, yfinance: "^VVIX", alpaca: "",     tradingview: "CBOE:VVIX",    multiplier: 1,   currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "Régime de stress" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.3  TAUX US
+  # ────────────────────────────────────────────────────────────────────────
+  us_rates:
+    label: "Taux US"
+    icon: "📈"
+    order: 30
+    contracts:
+      - { logical: ZT,   name: "2Y T-Note",             tier: standard, root: ZT,  exchange: CBOT, yfinance: "ZT=F",  alpaca: "",     tradingview: "CBOT:ZT1!",     multiplier: 2000,currency: USD, tick_size: 0.0078125,tick_value: 15.625, option_market: false, notes: "" }
+      - { logical: TU,   name: "2Y T-Note (mini)",      tier: mini,     root: ZT,  exchange: CBOT, yfinance: "",      alpaca: "",     tradingview: "CBOT:TU1!",     multiplier: 1000,currency: USD, tick_size: 0.0078125,tick_value: 7.8125, option_market: false, notes: "" }
+      - { logical: ZF,   name: "5Y T-Note",             tier: standard, root: ZF,  exchange: CBOT, yfinance: "ZF=F",  alpaca: "",     tradingview: "CBOT:ZF1!",     multiplier: 1000,currency: USD, tick_size: 0.0078125,tick_value: 7.8125, option_market: true,  notes: "" }
+      - { logical: FV,   name: "5Y T-Note (mini)",      tier: mini,     root: ZF,  exchange: CBOT, yfinance: "",      alpaca: "",     tradingview: "CBOT:FV1!",     multiplier: 500, currency: USD, tick_size: 0.0078125,tick_value: 3.9063, option_market: false, notes: "" }
+      - { logical: ZN,   name: "10Y T-Note",            tier: standard, root: ZN,  exchange: CBOT, yfinance: "ZN=F",  alpaca: "",     tradingview: "CBOT:ZN1!",     multiplier: 1000,currency: USD, tick_size: 0.015625, tick_value: 15.625, option_market: true,  notes: "Référence taux longs" }
+      - { logical: TY,   name: "10Y T-Note (mini)",     tier: mini,     root: ZN,  exchange: CBOT, yfinance: "",      alpaca: "",     tradingview: "CBOT:TY1!",     multiplier: 500, currency: USD, tick_size: 0.015625, tick_value: 7.8125, option_market: false, notes: "" }
+      - { logical: ZB,   name: "30Y T-Bond",            tier: standard, root: ZB,  exchange: CBOT, yfinance: "ZB=F",  alpaca: "",     tradingview: "CBOT:ZB1!",     multiplier: 1000,currency: USD, tick_size: 0.03125,  tick_value: 31.25,  option_market: true,  notes: "" }
+      - { logical: US,   name: "30Y T-Bond (mini)",     tier: mini,     root: ZB,  exchange: CBOT, yfinance: "",      alpaca: "",     tradingview: "CBOT:US1!",     multiplier: 500, currency: USD, tick_size: 0.03125,  tick_value: 15.625, option_market: false, notes: "" }
+      # Yields (spot indices)
+      - { logical: US10Y,name: "US 10Y Yield",          tier: standard, root: TNX, exchange: CBOE, yfinance: "^TNX",  alpaca: "",     tradingview: "TVC:US10Y",     multiplier: 1,   currency: USD, tick_size: 0.001, tick_value: 0.001, option_market: false, notes: "Spot yield index" }
+      - { logical: US05Y,name: "US 5Y Yield",           tier: standard, root: FVX, exchange: CBOE, yfinance: "^FVX",  alpaca: "",     tradingview: "TVC:US05Y",     multiplier: 1,   currency: USD, tick_size: 0.001, tick_value: 0.001, option_market: false, notes: "" }
+      - { logical: US02Y,name: "US 2Y Yield",           tier: standard, root: IRX, exchange: CBOE, yfinance: "^IRX",  alpaca: "",     tradingview: "TVC:US02Y",     multiplier: 1,   currency: USD, tick_size: 0.001, tick_value: 0.001, option_market: false, notes: "" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.4  ÉNERGIE
+  # ────────────────────────────────────────────────────────────────────────
+  energy:
+    label: "Énergie"
+    icon: "🛢️"
+    order: 40
+    contracts:
+      # WTI
+      - { logical: CL,   name: "WTI Crude Oil",         tier: standard, root: CL,  exchange: NYMEX,yfinance: "CL=F",  alpaca: "",     tradingview: "NYMEX:CL1!",    multiplier: 1000,currency: USD, tick_size: 0.01, tick_value: 10.00,  option_market: true,  notes: "" }
+      - { logical: QM,   name: "WTI E-mini Crude",      tier: mini,     root: CL,  exchange: NYMEX,yfinance: "QM=F",  alpaca: "",     tradingview: "NYMEX:QM1!",    multiplier: 500, currency: USD, tick_size: 0.025,tick_value: 12.50,  option_market: false, notes: "" }
+      - { logical: MCL,  name: "WTI Micro Crude",       tier: micro,    root: CL,  exchange: NYMEX,yfinance: "MCL=F", alpaca: "",     tradingview: "NYMEX:MCL1!",   multiplier: 100, currency: USD, tick_size: 0.01, tick_value: 1.00,   option_market: false, notes: "Idéal FTMO" }
+      # Brent
+      - { logical: B,    name: "Brent Crude",           tier: standard, root: B,   exchange: ICE_EU,yfinance: "BZ=F", alpaca: "",     tradingview: "ICEEUR:B1!",    multiplier: 1000,currency: USD, tick_size: 0.01, tick_value: 10.00,  option_market: true,  notes: "ICE Europe" }
+      - { logical: MBT_BRENT, name: "Brent Micro (broker)",tier: micro, root: B,   exchange: ICE_EU,yfinance: "",     alpaca: "",     tradingview: "",              multiplier: 100, currency: USD, tick_size: 0.01, tick_value: 1.00,   option_market: false, notes: "Selon broker, code conflictuel avec Micro BTC" }
+      # Natural Gas
+      - { logical: NG,   name: "Natural Gas",           tier: standard, root: NG,  exchange: NYMEX,yfinance: "NG=F",  alpaca: "",     tradingview: "NYMEX:NG1!",    multiplier: 10000,currency:USD, tick_size: 0.001,tick_value: 10.00,  option_market: true,  notes: "" }
+      - { logical: QG,   name: "Natural Gas E-mini",    tier: mini,     root: NG,  exchange: NYMEX,yfinance: "QG=F",  alpaca: "",     tradingview: "NYMEX:QG1!",    multiplier: 2500,currency: USD, tick_size: 0.005,tick_value: 12.50,  option_market: false, notes: "" }
+      - { logical: MNG,  name: "Natural Gas Micro",     tier: micro,    root: NG,  exchange: NYMEX,yfinance: "MNG=F", alpaca: "",     tradingview: "NYMEX:MNG1!",   multiplier: 1000,currency: USD, tick_size: 0.005,tick_value: 5.00,   option_market: false, notes: "" }
+      # Distillates
+      - { logical: HO,   name: "Heating Oil",           tier: standard, root: HO,  exchange: NYMEX,yfinance: "HO=F",  alpaca: "",     tradingview: "NYMEX:HO1!",    multiplier: 42000,currency:USD, tick_size: 0.0001,tick_value: 4.20,  option_market: false, notes: "42000 gal" }
+      - { logical: RB,   name: "RBOB Gasoline",         tier: standard, root: RB,  exchange: NYMEX,yfinance: "RB=F",  alpaca: "",     tradingview: "NYMEX:RB1!",    multiplier: 42000,currency:USD, tick_size: 0.0001,tick_value: 4.20,  option_market: false, notes: "" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.5  MÉTAUX (précieux + base + stratégiques via equities/ETF)
+  # ────────────────────────────────────────────────────────────────────────
+  metals:
+    label: "Métaux"
+    icon: "🪙"
+    order: 50
+    contracts:
+      - { logical: GC,   name: "Gold",                  tier: standard, root: GC,  exchange: COMEX,yfinance: "GC=F",  alpaca: "",     tradingview: "COMEX:GC1!",    multiplier: 100, currency: USD, tick_size: 0.10, tick_value: 10.00,  option_market: true,  notes: "" }
+      - { logical: QO,   name: "Gold E-mini",           tier: mini,     root: GC,  exchange: COMEX,yfinance: "",      alpaca: "",     tradingview: "COMEX:QO1!",    multiplier: 50,  currency: USD, tick_size: 0.25, tick_value: 12.50,  option_market: false, notes: "" }
+      - { logical: MGC,  name: "Gold Micro",            tier: micro,    root: GC,  exchange: COMEX,yfinance: "MGC=F", alpaca: "",     tradingview: "COMEX_MINI:MGC1!",multiplier: 10,currency: USD, tick_size: 0.10, tick_value: 1.00,   option_market: false, notes: "FTMO friendly" }
+      - { logical: SI,   name: "Silver",                tier: standard, root: SI,  exchange: COMEX,yfinance: "SI=F",  alpaca: "",     tradingview: "COMEX:SI1!",    multiplier: 5000,currency: USD, tick_size: 0.005,tick_value: 25.00,  option_market: true,  notes: "" }
+      - { logical: QI,   name: "Silver E-mini",         tier: mini,     root: SI,  exchange: COMEX,yfinance: "",      alpaca: "",     tradingview: "COMEX:QI1!",    multiplier: 2500,currency: USD, tick_size: 0.0125,tick_value:31.25,   option_market: false, notes: "" }
+      - { logical: SIL,  name: "Silver Micro",          tier: micro,    root: SI,  exchange: COMEX,yfinance: "SIL=F", alpaca: "",     tradingview: "COMEX_MINI:SIL1!",multiplier: 1000,currency:USD, tick_size: 0.005,tick_value: 5.00, option_market: false, notes: "" }
+      - { logical: HG,   name: "Copper",                tier: standard, root: HG,  exchange: COMEX,yfinance: "HG=F",  alpaca: "",     tradingview: "COMEX:HG1!",    multiplier: 25000,currency:USD, tick_size: 0.0005,tick_value:12.50,   option_market: true,  notes: "" }
+      - { logical: QC,   name: "Copper E-mini",         tier: mini,     root: HG,  exchange: COMEX,yfinance: "",      alpaca: "",     tradingview: "COMEX:QC1!",    multiplier: 12500,currency:USD, tick_size: 0.001,tick_value: 12.50,  option_market: false, notes: "" }
+      - { logical: MHG,  name: "Copper Micro",          tier: micro,    root: HG,  exchange: COMEX,yfinance: "MHG=F", alpaca: "",     tradingview: "COMEX_MINI:MHG1!",multiplier: 2500,currency:USD, tick_size: 0.0005,tick_value:1.25,  option_market: false, notes: "" }
+      - { logical: PL,   name: "Platinum",              tier: standard, root: PL,  exchange: NYMEX,yfinance: "PL=F",  alpaca: "",     tradingview: "NYMEX:PL1!",    multiplier: 50,  currency: USD, tick_size: 0.10, tick_value: 5.00,   option_market: false, notes: "" }
+      - { logical: PA,   name: "Palladium",             tier: standard, root: PA,  exchange: NYMEX,yfinance: "PA=F",  alpaca: "",     tradingview: "NYMEX:PA1!",    multiplier: 100, currency: USD, tick_size: 0.05, tick_value: 5.00,   option_market: false, notes: "" }
+      # Stratégiques via actions / ETF
+      - { logical: URA,  name: "Uranium ETF",           tier: standard, root: URA, exchange: NYSE_ARCA,yfinance: "URA",alpaca: URA,   tradingview: "AMEX:URA",      multiplier: 1,   currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: true,  notes: "Global X" }
+      - { logical: URNM, name: "Uranium Miners ETF",    tier: standard, root: URNM,exchange: NYSE_ARCA,yfinance: "URNM",alpaca: URNM, tradingview: "AMEX:URNM",     multiplier: 1,   currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: true,  notes: "Sprott" }
+      - { logical: CCJ,  name: "Cameco (Uranium)",      tier: standard, root: CCJ, exchange: NYSE,    yfinance: "CCJ", alpaca: CCJ,    tradingview: "NYSE:CCJ",      multiplier: 1,   currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: true,  notes: "" }
+      - { logical: ALMTQ,name: "Almonty (Tungstène)",   tier: standard, root: ALMTQ,exchange: TSX,    yfinance: "AII.TO",alpaca: "",   tradingview: "TSX:AII",       multiplier: 1,   currency: CAD, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "Tungstène" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.6  CRYPTO FUTURES
+  # ────────────────────────────────────────────────────────────────────────
+  crypto:
+    label: "Crypto futures"
+    icon: "₿"
+    order: 60
+    contracts:
+      - { logical: BTC,  name: "Bitcoin futures",       tier: standard, root: BTC, exchange: CME,  yfinance: "BTC=F", alpaca: "",     tradingview: "CME:BTC1!",     multiplier: 5,   currency: USD, tick_size: 5.0,  tick_value: 25.00,  option_market: true,  notes: "5 BTC/contrat" }
+      - { logical: MBT,  name: "Bitcoin Micro",         tier: micro,    root: BTC, exchange: CME,  yfinance: "",      alpaca: "",     tradingview: "CME:MBT1!",     multiplier: 0.1, currency: USD, tick_size: 5.0,  tick_value: 0.50,   option_market: false, notes: "0.1 BTC" }
+      - { logical: ETH,  name: "Ether futures",         tier: standard, root: ETH, exchange: CME,  yfinance: "ETH=F", alpaca: "",     tradingview: "CME:ETH1!",     multiplier: 50,  currency: USD, tick_size: 0.50, tick_value: 25.00,  option_market: true,  notes: "" }
+      - { logical: MET,  name: "Ether Micro",           tier: micro,    root: ETH, exchange: CME,  yfinance: "",      alpaca: "",     tradingview: "CME:MET1!",     multiplier: 0.1, currency: USD, tick_size: 0.50, tick_value: 0.05,   option_market: false, notes: "" }
+      # Spot indices pour vue d'ensemble
+      - { logical: BTCUSD, name: "BTC/USD (spot)",      tier: standard, root: BTC, exchange: COINBASE,yfinance:"BTC-USD",alpaca:"",   tradingview: "COINBASE:BTCUSD",multiplier: 1,  currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "Spot" }
+      - { logical: ETHUSD, name: "ETH/USD (spot)",      tier: standard, root: ETH, exchange: COINBASE,yfinance:"ETH-USD",alpaca:"",   tradingview: "COINBASE:ETHUSD",multiplier: 1,  currency: USD, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "Spot" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.7  FUTURES EUROPÉENS
+  # ────────────────────────────────────────────────────────────────────────
+  eu_futures:
+    label: "Futures Européens"
+    icon: "🇪🇺"
+    order: 70
+    contracts:
+      - { logical: FESX, name: "Euro Stoxx 50",         tier: standard, root: FESX,exchange: Eurex,   yfinance: "FESX=F",alpaca: "",   tradingview: "EUREX:FESX1!",  multiplier: 10,  currency: EUR, tick_size: 1.0,  tick_value: 10.00,  option_market: true,  notes: "" }
+      - { logical: MFS,  name: "Mini Euro Stoxx 50",    tier: mini,     root: FESX,exchange: Eurex,   yfinance: "",      alpaca: "",   tradingview: "EUREX:MFS1!",   multiplier: 1,   currency: EUR, tick_size: 1.0,  tick_value: 1.00,   option_market: false, notes: "" }
+      - { logical: FDAX, name: "DAX",                   tier: standard, root: FDAX,exchange: Eurex,   yfinance: "FDAX=F",alpaca: "",   tradingview: "EUREX:FDAX1!",  multiplier: 25,  currency: EUR, tick_size: 0.5,  tick_value: 12.50,  option_market: true,  notes: "" }
+      - { logical: FDXM, name: "Mini-DAX",              tier: mini,     root: FDAX,exchange: Eurex,   yfinance: "",      alpaca: "",   tradingview: "EUREX:FDXM1!",  multiplier: 5,   currency: EUR, tick_size: 1.0,  tick_value: 5.00,   option_market: false, notes: "" }
+      - { logical: FDXS, name: "Micro-DAX",             tier: micro,    root: FDAX,exchange: Eurex,   yfinance: "",      alpaca: "",   tradingview: "EUREX:FDXS1!",  multiplier: 1,   currency: EUR, tick_size: 1.0,  tick_value: 1.00,   option_market: false, notes: "" }
+      - { logical: FCE,  name: "CAC 40",                tier: standard, root: FCE, exchange: Euronext,yfinance: "FCE=F", alpaca: "",   tradingview: "MATIF:FCE1!",   multiplier: 10,  currency: EUR, tick_size: 0.5,  tick_value: 5.00,   option_market: true,  notes: "" }
+      - { logical: Z,    name: "FTSE 100",              tier: standard, root: Z,   exchange: ICE_EU,  yfinance: "Z=F",   alpaca: "",   tradingview: "ICEEUR:Z1!",    multiplier: 10,  currency: GBP, tick_size: 0.5,  tick_value: 5.00,   option_market: true,  notes: "ICE Europe" }
+      - { logical: FSMI, name: "Swiss Market Index",    tier: standard, root: FSMI,exchange: Eurex,   yfinance: "FSMI=F",alpaca: "",   tradingview: "EUREX:FSMI1!",  multiplier: 10,  currency: CHF, tick_size: 1.0,  tick_value: 10.00,  option_market: false, notes: "" }
+      # Indices spot pour les yields/ratios
+      - { logical: SX5E, name: "Euro Stoxx 50 (spot)",  tier: standard, root: SX5E,exchange: STOXX,   yfinance: "^STOXX50E",alpaca:"", tradingview: "INDEX:SX5E",    multiplier: 1,   currency: EUR, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "" }
+      - { logical: DAX,  name: "DAX (spot)",            tier: standard, root: DAX, exchange: XETR,    yfinance: "^GDAXI", alpaca: "",   tradingview: "XETR:DAX",      multiplier: 1,   currency: EUR, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "" }
+      - { logical: CAC,  name: "CAC 40 (spot)",         tier: standard, root: CAC, exchange: Euronext,yfinance: "^FCHI",  alpaca: "",   tradingview: "EURONEXT:PX1",  multiplier: 1,   currency: EUR, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "" }
+      - { logical: FTSE, name: "FTSE 100 (spot)",       tier: standard, root: FTSE,exchange: LSE,     yfinance: "^FTSE",  alpaca: "",   tradingview: "FTSE:UKX",      multiplier: 1,   currency: GBP, tick_size: 0.01, tick_value: 0.01,   option_market: false, notes: "" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.8  ETF SECTORIELS US (SPDR Select Sector)
+  # ────────────────────────────────────────────────────────────────────────
+  us_sector_etfs:
+    label: "ETF Sectoriels US"
+    icon: "🏭"
+    order: 80
+    contracts:
+      - { logical: XLK,  name: "Technology",            tier: standard, root: XLK, exchange: NYSE_ARCA,yfinance: "XLK", alpaca: XLK,   tradingview: "AMEX:XLK",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLF,  name: "Financials",            tier: standard, root: XLF, exchange: NYSE_ARCA,yfinance: "XLF", alpaca: XLF,   tradingview: "AMEX:XLF",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLE,  name: "Energy",                tier: standard, root: XLE, exchange: NYSE_ARCA,yfinance: "XLE", alpaca: XLE,   tradingview: "AMEX:XLE",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLV,  name: "Health Care",           tier: standard, root: XLV, exchange: NYSE_ARCA,yfinance: "XLV", alpaca: XLV,   tradingview: "AMEX:XLV",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLI,  name: "Industrials",           tier: standard, root: XLI, exchange: NYSE_ARCA,yfinance: "XLI", alpaca: XLI,   tradingview: "AMEX:XLI",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLY,  name: "Consumer Discretionary",tier: standard, root: XLY, exchange: NYSE_ARCA,yfinance: "XLY", alpaca: XLY,   tradingview: "AMEX:XLY",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLP,  name: "Consumer Staples",      tier: standard, root: XLP, exchange: NYSE_ARCA,yfinance: "XLP", alpaca: XLP,   tradingview: "AMEX:XLP",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLB,  name: "Materials",             tier: standard, root: XLB, exchange: NYSE_ARCA,yfinance: "XLB", alpaca: XLB,   tradingview: "AMEX:XLB",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLU,  name: "Utilities",             tier: standard, root: XLU, exchange: NYSE_ARCA,yfinance: "XLU", alpaca: XLU,   tradingview: "AMEX:XLU",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLRE, name: "Real Estate",           tier: standard, root: XLRE,exchange: NYSE_ARCA,yfinance: "XLRE",alpaca: XLRE,  tradingview: "AMEX:XLRE",     multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: XLC,  name: "Communication Services",tier: standard, root: XLC, exchange: NYSE_ARCA,yfinance: "XLC", alpaca: XLC,   tradingview: "AMEX:XLC",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.9  ETF THÉMATIQUES
+  # ────────────────────────────────────────────────────────────────────────
+  thematic_etfs:
+    label: "ETF Thématiques"
+    icon: "🚀"
+    order: 90
+    contracts:
+      - { logical: SMH,  name: "Semiconductors (VanEck)",tier: standard,root: SMH, exchange: NASDAQ,  yfinance: "SMH", alpaca: SMH,    tradingview: "NASDAQ:SMH",    multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: SOXX, name: "Semiconductors (iShares)",tier:standard,root: SOXX,exchange: NASDAQ,  yfinance: "SOXX",alpaca: SOXX,   tradingview: "NASDAQ:SOXX",   multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: ARKX, name: "ARK Space Exploration", tier: standard, root: ARKX,exchange: NYSE_ARCA,yfinance: "ARKX",alpaca: ARKX,  tradingview: "AMEX:ARKX",     multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "Space" }
+      - { logical: UFO,  name: "Procure Space ETF",     tier: standard, root: UFO, exchange: NYSE_ARCA,yfinance: "UFO", alpaca: UFO,   tradingview: "AMEX:UFO",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: false, notes: "Space" }
+      - { logical: ITA,  name: "Aerospace & Defense",   tier: standard, root: ITA, exchange: NYSE_ARCA,yfinance: "ITA", alpaca: ITA,   tradingview: "BATS:ITA",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "iShares" }
+      - { logical: QTUM, name: "Defiance Quantum",      tier: standard, root: QTUM,exchange: NYSE_ARCA,yfinance: "QTUM",alpaca: QTUM,  tradingview: "AMEX:QTUM",     multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "Quantum" }
+      - { logical: GDX,  name: "Gold Miners",           tier: standard, root: GDX, exchange: NYSE_ARCA,yfinance: "GDX", alpaca: GDX,   tradingview: "AMEX:GDX",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: GDXJ, name: "Junior Gold Miners",    tier: standard, root: GDXJ,exchange: NYSE_ARCA,yfinance: "GDXJ",alpaca: GDXJ,  tradingview: "AMEX:GDXJ",     multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: USO,  name: "US Oil Fund",           tier: standard, root: USO, exchange: NYSE_ARCA,yfinance: "USO", alpaca: USO,   tradingview: "AMEX:USO",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "Linear WTI proxy" }
+      - { logical: ARKK, name: "ARK Innovation",        tier: standard, root: ARKK,exchange: NYSE_ARCA,yfinance: "ARKK",alpaca: ARKK,  tradingview: "AMEX:ARKK",     multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+
+  # ────────────────────────────────────────────────────────────────────────
+  # 1.10  BROAD BENCHMARKS (ETF + indices spot)
+  # ────────────────────────────────────────────────────────────────────────
+  benchmarks:
+    label: "Broad benchmarks"
+    icon: "🎯"
+    order: 100
+    contracts:
+      - { logical: SPY,  name: "S&P 500 ETF",           tier: standard, root: SPY, exchange: NYSE_ARCA,yfinance: "SPY", alpaca: SPY,   tradingview: "AMEX:SPY",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: QQQ,  name: "Nasdaq-100 ETF",        tier: standard, root: QQQ, exchange: NASDAQ,  yfinance: "QQQ", alpaca: QQQ,    tradingview: "NASDAQ:QQQ",    multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: IWM,  name: "Russell 2000 ETF",      tier: standard, root: IWM, exchange: NYSE_ARCA,yfinance: "IWM", alpaca: IWM,   tradingview: "AMEX:IWM",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: DIA,  name: "Dow Jones ETF",         tier: standard, root: DIA, exchange: NYSE_ARCA,yfinance: "DIA", alpaca: DIA,   tradingview: "AMEX:DIA",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: SPX,  name: "S&P 500 (spot)",        tier: standard, root: SPX, exchange: CBOE,    yfinance: "^GSPC",alpaca: "",    tradingview: "SP:SPX",        multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: NDX,  name: "Nasdaq-100 (spot)",     tier: standard, root: NDX, exchange: NASDAQ,  yfinance: "^NDX", alpaca: "",    tradingview: "NASDAQ:NDX",    multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: RUT,  name: "Russell 2000 (spot)",   tier: standard, root: RUT, exchange: CBOE,    yfinance: "^RUT", alpaca: "",    tradingview: "CBOE:RUT",      multiplier: 1, currency: USD, tick_size: 0.01, tick_value: 0.01, option_market: true,  notes: "" }
+      - { logical: DXY,  name: "US Dollar Index",       tier: standard, root: DXY, exchange: ICE_EU,  yfinance: "DX=F", alpaca: "",    tradingview: "TVC:DXY",       multiplier: 1000,currency:USD,tick_size: 0.005,tick_value: 5.00, option_market: false, notes: "" }
+
+# ============================================================================
+# Cross-mapping vers les thématiques (réutilisé par §3 et §5 du CDC)
+# ============================================================================
+theme_to_drivers:
+  Space:
+    primary_futures: [NQ, RTY]
+    hedge_etfs: [ARKX, ITA, UFO]
+  Semis:
+    primary_futures: [NQ]
+    hedge_etfs: [SMH, SOXX]
+  Uranium:
+    primary_futures: [GC, ZN]
+    hedge_etfs: [URA, URNM]
+  Energy:
+    primary_futures: [CL, RB, NG]
+    hedge_etfs: [XLE, USO]
+  Quantum:
+    primary_futures: [NQ]
+    hedge_etfs: [QTUM, ARKK]
+  Defense:
+    primary_futures: [ES]
+    hedge_etfs: [ITA]
+  Utilities:
+    primary_futures: [ZN]
+    hedge_etfs: [XLU]
+  Financials:
+    primary_futures: [ES]
+    hedge_etfs: [XLF]
+  Tech_Mega:
+    primary_futures: [NQ, ES]
+    hedge_etfs: [QQQ, XLK]

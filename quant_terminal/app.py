@@ -499,6 +499,7 @@ tabs = st.tabs([
     "🌀 HMM Regime",
     "🤖 Kalman",
     "☀️ Daily Brief",
+    "🌍 Cross-Asset",
 ])
 
 
@@ -2556,11 +2557,22 @@ with tabs[15]:
 
 
 # ============================================================================
+# TAB 16 — CROSS-ASSET UNIVERSE (CDC §1)
+# ============================================================================
+with tabs[16]:
+    try:
+        from src.decision.cross_asset_dashboard import render_cross_asset_tab
+        render_cross_asset_tab()
+    except Exception as exc:
+        st.error(f"Cross-Asset universe unavailable: {exc}")
+
+
+# ============================================================================
 # Footer
 # ============================================================================
 st.markdown(
     f"<div style='margin-top:2rem;color:{PALETTE.fg_muted};font-size:0.75rem;text-align:center;'>"
-    "Quant Terminal · Alpaca + yfinance · FX EUR · 16 tabs · Daily Brief · HMM · Live Book · IV Crush"
+    "Quant Terminal · Alpaca + yfinance · FX EUR · 17 tabs · Cross-Asset · Daily Brief · HMM · Live Book · IV Crush"
     "</div>",
     unsafe_allow_html=True,
 )
