@@ -1,0 +1,73 @@
+# =============================================================================
+# Quant Terminal — local dev compose
+# =============================================================================
+# Start:    docker compose -f docker-compose.dev.yml up
+# Redis only:
+#           docker compose -f docker-compose.dev.yml up -d redis
+# Stop all: docker compose -f docker-compose.dev.yml down
+#
+# The api service auto-reloads on file changes (src/ + api/ + config/ mounted
+# as volumes).
+# =============================================================================
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: qt-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: qt-api
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      # Forward host env vars (override with .env file if present)
+      APCA_API_KEY_ID: ${APCA_API_KEY_ID:-}
+      APCA_API_SECRET_KEY: ${APCA_API_SECRET_KEY:-}
+      APCA_API_BASE_URL: ${APCA_API_BASE_URL:-https://paper-api.alpaca.markets}
+      FRED_API_KEY: ${FRED_API_KEY:-}
+      FMP_API_KEY: ${FMP_API_KEY:-}
+      SEC_EMAIL: ${SEC_EMAIL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./api:/app/api
+      - ./config:/app/config
+    command: >
+      uvicorn api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/api
+      --reload-dir /app/src
+
+  # The arq worker is wired in Phase 3 — kept as commented-out scaffolding here
+  # to keep the docker compose surface stable.
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.api
+  #   container_name: qt-worker
+  #   environment:
+  #     REDIS_URL: redis://redis:6379/0
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./src:/app/src
+  #     - ./api:/app/api
+  #     - ./config:/app/config
+  #   command: arq api.workers.worker.WorkerSettings

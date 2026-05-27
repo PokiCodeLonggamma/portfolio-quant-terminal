@@ -36,7 +36,7 @@ jobs:
       - name: ruff check (errors only — F401/F811/F841/E711/E712)
         working-directory: quant_terminal
         run: |
-          ruff check src/ app.py tests/ \
+          ruff check src/ api/ app.py tests/ \
             --select F401,F811,F841,E711,E712 \
             --output-format=github
 
@@ -84,11 +84,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: quant_terminal/requirements.txt
-      - name: Install project (editable) + test deps
+      - name: Install project (editable) + api extras + test deps
         working-directory: quant_terminal
         run: |
           python -m pip install --upgrade pip
-          pip install -e . pytest pytest-cov
+          pip install -e ".[api]" pytest pytest-cov
       - name: pytest
         working-directory: quant_terminal
         env:
@@ -96,8 +96,9 @@ jobs:
           APCA_API_KEY_ID: ""
           APCA_API_SECRET_KEY: ""
           SEC_EMAIL: "ci@example.com"
+          REDIS_URL: "redis://localhost:6379/0"
         run: |
-          pytest -q --no-header --tb=short --cov=src --cov-report=term-missing
+          pytest -q --no-header --tb=short --cov=src --cov=api --cov-report=term-missing
       - name: Upload coverage (3.12 only)
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

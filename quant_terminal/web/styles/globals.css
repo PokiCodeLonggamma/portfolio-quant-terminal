@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=JetBrains+Mono:wght@300;400;500;700&display=swap");
+
+/* =========================================================================
+   Design tokens — Wall Street Brutalist (v3, ported from src/viz/theme.py)
+   ========================================================================= */
+@theme {
+  --color-ink: #0a0a0f;
+  --color-elev: #14141c;
+  --color-card: #1a1a24;
+  --color-card-hover: #242430;
+  --color-muted-bg: #1f1f2a;
+  --color-border: #2a2a38;
+  --color-border-strong: #4a4a60;
+  --color-bone: #faf7f2;
+  --color-bone-muted: #b8b5ac;
+  --color-bone-dim: #6b6960;
+  --color-rule: #d4af37;
+  --color-mercury: #ff3838;
+  --color-mint: #2ee89e;
+  --color-amber: #ffb800;
+  --color-cyan: #22d3ee;
+
+  --font-display: "Fraunces", "Newsreader", Georgia, serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* =========================================================================
+   Base
+   ========================================================================= */
+html, body {
+  background: var(--color-ink);
+  color: var(--color-bone);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(212, 175, 55, 0.08) 0%, transparent 600px),
+    radial-gradient(circle at 0% 100%, rgba(46, 232, 158, 0.04) 0%, transparent 500px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/></svg>");
+  background-attachment: fixed;
+}
+
+h1, h2, h3, .qt-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+h1 { font-size: 2.6rem; line-height: 1.05; font-variation-settings: "opsz" 96; }
+h2 { font-size: 1.85rem; font-variation-settings: "opsz" 32; }
+h3 { font-size: 1.25rem; font-variation-settings: "opsz" 14; }
+
+.qt-mono { font-family: var(--font-mono); }
+
+/* =========================================================================
+   Components — KPI tile, hero, section, empty state, pills
+   ========================================================================= */
+.qt-tile {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-rule);
+  border-radius: 0;
+  padding: 16px 18px;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.qt-tile:hover {
+  background: var(--color-card-hover);
+  border-left-color: var(--color-mint);
+}
+.qt-tile-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-bone-muted);
+  margin-bottom: 6px;
+}
+.qt-tile-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.65rem;
+  color: var(--color-bone);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.qt-tile-hint {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-bone-dim);
+  margin-top: 6px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
+}
+
+.qt-hero {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  padding: 28px 0 20px 0;
+  border-bottom: 1px solid var(--color-rule);
+  margin-bottom: 24px;
+}
+.qt-hero-number {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 900;
+  font-size: 4rem;
+  color: var(--color-rule);
+  line-height: 0.85;
+  opacity: 0.95;
+  flex-shrink: 0;
+}
+.qt-hero-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5rem;
+  line-height: 1.05;
+  color: var(--color-bone);
+  letter-spacing: -0.02em;
+}
+.qt-hero-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--color-bone-muted);
+  margin-top: 6px;
+}
+
+/* Buttons — sharp brutalist */
+button, .qt-btn {
+  border-radius: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-bone);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+button:hover, .qt-btn:hover {
+  border-color: var(--color-rule);
+  background: var(--color-card-hover);
+}
+
+/* Staggered fade-up */
+@keyframes qt-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.qt-tile, .qt-hero {
+  animation: qt-fade-up 240ms ease-out both;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--color-ink); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-bone-dim); }
