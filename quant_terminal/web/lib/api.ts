@@ -12,6 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 export async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
+    credentials: "include", // ship cookies for auth-protected endpoints
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });

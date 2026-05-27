@@ -1,6 +1,5 @@
-@import "tailwindcss";
-
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,700;9..144,900&family=JetBrains+Mono:wght@300;400;500;700&display=swap");
+@import "tailwindcss";
 
 /* =========================================================================
    Design tokens — Wall Street Brutalist (v3, ported from src/viz/theme.py)

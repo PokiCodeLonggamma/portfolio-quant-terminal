@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.deps import get_redis_url
 from api.routes import admin as admin_router
+from api.routes import auth as auth_router
 from api.routes import catalysts as catalysts_router
 from api.routes import cross_asset as cross_asset_router
 from api.routes import news as news_router
@@ -87,6 +88,8 @@ app.include_router(catalysts_router.router)
 app.include_router(scanners_router.router)
 # Phase 3 admin/cache management
 app.include_router(admin_router.router)
+# Phase 4 auth
+app.include_router(auth_router.router)
 # WebSocket routers
 app.include_router(ws_prices_router.router)
 
