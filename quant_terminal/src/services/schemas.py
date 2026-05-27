@@ -127,6 +127,158 @@ class MacroRegimeSnapshot(BaseModel):
 
 
 # =============================================================================
+# Phase 2 — Portfolio service
+# =============================================================================
+class Holding(BaseModel):
+    """One row of the portfolio."""
+    ticker: str
+    isin: str | None = None
+    name: str | None = None
+    quantity: float
+    price_eur: float | None = None
+    market_value_eur: float
+    currency: str = "EUR"
+    theme: str | None = None
+    region: str | None = None
+
+
+class PortfolioSummary(BaseModel):
+    """Top-level portfolio snapshot."""
+    nav_eur: float
+    n_positions: int
+    holdings: list[Holding] = Field(default_factory=list)
+    asof: datetime
+
+
+# =============================================================================
+# Phase 2 — Options service extensions (chain dump + vol surface)
+# =============================================================================
+class ChainContractOut(BaseModel):
+    """JSON-safe option contract (subset of src.common.schemas.OptionContract)."""
+    underlying: str
+    symbol: str
+    expiry: date
+    strike: float
+    right: Literal["C", "P"]
+    bid: float | None = None
+    ask: float | None = None
+    mid: float | None = None
+    iv: float | None = None
+    delta: float | None = None
+    gamma: float | None = None
+    theta: float | None = None
+    vega: float | None = None
+    open_interest: int | None = None
+    volume: int | None = None
+
+
+class ChainDump(BaseModel):
+    """Full chain dump for a ticker."""
+    ticker: str
+    spot: float | None
+    n_contracts: int
+    expiries: list[date]
+    contracts: list[ChainContractOut] = Field(default_factory=list)
+    asof: datetime
+
+
+class VolSurfacePoint(BaseModel):
+    """One (expiry, strike, right) sample of the IV surface."""
+    expiry: date
+    dte_days: int
+    strike: float
+    right: Literal["C", "P"]
+    iv: float
+    moneyness: float
+
+
+class VolSurfaceDump(BaseModel):
+    """Vol surface grid for the 3D viz."""
+    ticker: str
+    spot: float
+    points: list[VolSurfacePoint] = Field(default_factory=list)
+    asof: datetime
+
+
+# =============================================================================
+# Phase 2 — News service
+# =============================================================================
+class NewsItem(BaseModel):
+    """One headline."""
+    title: str
+    url: str
+    source: str
+    published_at: datetime | None = None
+    summary: str | None = None
+    tickers: list[str] = Field(default_factory=list)
+    sentiment: Literal["positive", "neutral", "negative"] | None = None
+
+
+class NewsPulse(BaseModel):
+    """Aggregated news feed."""
+    items: list[NewsItem] = Field(default_factory=list)
+    asof: datetime
+
+
+# =============================================================================
+# Phase 2 — Catalysts service
+# =============================================================================
+class CatalystOut(BaseModel):
+    """Calendar event for the frontend."""
+    event_id: str
+    ticker: str | None
+    category: Literal[
+        "earnings", "fomc", "ecb", "opec", "cpi", "eia",
+        "nrc", "launch", "contract_award", "dividend", "macro_other",
+    ]
+    title: str
+    start: datetime
+    end: datetime | None = None
+    notes: str | None = None
+    estimated_eps: float | None = None
+    actual_eps: float | None = None
+
+
+class CatalystFeed(BaseModel):
+    horizon_days: int
+    items: list[CatalystOut] = Field(default_factory=list)
+    asof: datetime
+
+
+# =============================================================================
+# Phase 2 — Scanner services (universe + squeeze)
+# =============================================================================
+class UniverseScanRow(BaseModel):
+    """One row of the options universe scanner (cf src.trading.universe_scanner)."""
+    ticker: str
+    spot: float
+    chain_size: int
+    atm_iv_pct: float | None
+    delta25_call_strike: float | None
+    delta25_call_premium_usd: float | None
+    delta25_put_strike: float | None
+    delta25_put_premium_usd: float | None
+    gamma_flip: float | None
+    neg_gamma_lo: float | None
+    neg_gamma_hi: float | None
+    put_call_ratio: float
+    score: float
+    notes: str
+    asof: str
+
+
+class SqueezeRow(BaseModel):
+    """One row of the short-squeeze scanner."""
+    ticker: str
+    short_pct_float: float | None = None
+    days_to_cover: float | None = None
+    cost_to_borrow_pct: float | None = None
+    utilization_pct: float | None = None
+    on_sho_threshold: bool = False
+    composite_score: float | None = None
+
+
+# =============================================================================
 # Meta — service-level errors / status
 # =============================================================================
 class ServiceError(BaseModel):

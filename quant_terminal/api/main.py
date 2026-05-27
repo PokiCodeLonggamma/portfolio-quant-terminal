@@ -21,10 +21,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.deps import get_redis_url
+from api.routes import catalysts as catalysts_router
 from api.routes import cross_asset as cross_asset_router
+from api.routes import news as news_router
 from api.routes import options as options_router
+from api.routes import portfolio as portfolio_router
 from api.routes import regime as regime_router
+from api.routes import scanners as scanners_router
 from api.routes import universe as universe_router
+from api.ws import prices as ws_prices_router
 
 VERSION = "0.1.0"
 
@@ -74,6 +79,13 @@ app.include_router(universe_router.router)
 app.include_router(cross_asset_router.router)
 app.include_router(options_router.router)
 app.include_router(regime_router.router)
+# Phase 2 routers
+app.include_router(portfolio_router.router)
+app.include_router(news_router.router)
+app.include_router(catalysts_router.router)
+app.include_router(scanners_router.router)
+# WebSocket routers
+app.include_router(ws_prices_router.router)
 
 
 # ---------------------------------------------------------------------------
