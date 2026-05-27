@@ -49,12 +49,26 @@ dev = [
     "mypy>=1.10",
 ]
 
+# FastAPI / WebSocket / Redis layer (Phase 0 of the Streamlit → Next.js portage).
+# Install with: pip install -e .[api]
+api = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "redis>=5.0.0",
+    "arq>=0.26.0",
+    "python-jose[cryptography]>=3.3.0",   # JWT
+    "passlib[bcrypt]>=1.7.4",              # password hashing
+    "python-multipart>=0.0.9",             # multipart uploads (DEGIRO CSV)
+    "websockets>=12.0",                    # used by uvicorn/standard
+]
+
 [project.scripts]
 quant-terminal = "src.main:main"
+quant-terminal-api = "api.main:run"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = ["src*", "api*"]
 
 [tool.ruff]
 line-length = 110
